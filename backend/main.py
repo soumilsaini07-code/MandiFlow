@@ -386,6 +386,118 @@ def get_dashboard_data(mandi_code: Optional[str] = "KARNAL-01", db: Session = De
         ]
     }
 
+def get_language_menu_prompt() -> str:
+    return (
+        "🌾 *Namaste Kisan Bandhu! MandiFlow me aapka swagat hai.* 🌾\n"
+        "(Welcome to MandiFlow - Karnal APMC Smart Arrival System)\n\n"
+        "Kripya apni suvidha-janak bhasha chunein / Please choose your preferred language:\n\n"
+        "1️⃣ *हिन्दी (Hindi)*\n"
+        "2️⃣ *ਪੰਜਾਬੀ (Punjabi)*\n"
+        "3️⃣ *English*\n\n"
+        "👉 *1, 2 ya 3* likhkar bhejein (Reply with 1, 2, or 3)"
+    )
+
+def get_language_ack_prompt(lang: str) -> str:
+    if lang == "hi":
+        return (
+            "✅ *आपने हिन्दी भाषा चुनी है।*\n\n"
+            "🌾 *मंडी में स्लॉट बुक करने के लिए अपनी फसल का विवरण भेजें:*\n"
+            "(आप लिखकर या बोलकर वॉयस नोट भेज सकते हैं)\n\n"
+            "👉 *उदाहरण:* _'40 क्विंटल गेहूं कल सुबह 10 बजे ट्रैक्टर से लाना है'_"
+        )
+    elif lang == "pa":
+        return (
+            "✅ *ਤੁਸੀਂ ਪੰਜਾਬੀ ਭਾਸ਼ਾ ਚੁਣੀ ਹੈ।*\n\n"
+            "🌾 *ਮੰਡੀ ਵਿੱਚ ਸਲਾਟ ਬੁੱਕ ਕਰਨ ਲਈ ਆਪਣੀ ਫ਼ਸਲ ਦਾ ਵੇਰਵਾ ਭੇਜੋ:*\n"
+            "(ਤੁਸੀਂ ਲਿਖ ਕੇ ਜਾਂ ਵੌਇਸ ਨੋਟ ਰਾਹੀਂ ਬੋਲ ਕੇ ਭੇਜ ਸਕਦੇ ਹੋ)\n\n"
+            "👉 *ਉਦਾਹਰਨ:* _'40 ਕੁਇੰਟਲ ਕਣਕ ਕੱਲ੍ਹ ਸਵੇਰੇ 10 ਵਜੇ ਟਰੈਕਟਰ ਰਾਹੀਂ ਲਿਆਉਣੀ ਹੈ'_"
+        )
+    else:
+        return (
+            "✅ *You have selected English.*\n\n"
+            "🌾 *To book an APMC Mandi arrival slot, please send your harvest details:*\n"
+            "(You can send a text message or a WhatsApp voice note)\n\n"
+            "👉 *Example:* _'40 quintals of wheat tomorrow at 10 AM by tractor'_"
+        )
+
+def get_confirmation_prompt(intent: dict, lang: str = "hi") -> str:
+    qty = intent.get("quantity_quintals", 40)
+    crop = intent.get("crop", "Wheat")
+    vehicle = intent.get("vehicle_type", "Tractor-Trolley")
+    arrival = intent.get("preferred_date") or intent.get("arrival_date", "today")
+
+    if lang == "hi":
+        return (
+            f"🌾 *क्या यह विवरण सही है?*\n\n"
+            f"• *फसल:* {crop}\n"
+            f"• *मात्रा:* {qty} क्विंटल ({vehicle})\n"
+            f"• *आगमन:* {arrival}\n\n"
+            f'👉 पुष्टि करने के लिए *"1"* लिखकर भेजें, या सुधारने के लिए नया संदेश / वॉयस नोट भेजें।'
+        )
+    elif lang == "pa":
+        return (
+            f"🌾 *ਕੀ ਇਹ ਵੇਰਵਾ ਸਹੀ ਹੈ?*\n\n"
+            f"• *ਫ਼ਸਲ:* {crop}\n"
+            f"• *ਮਾਤਰਾ:* {qty} ਕੁਇੰਟਲ ({vehicle})\n"
+            f"• *ਆਉਣ ਦਾ ਸਮਾਂ:* {arrival}\n\n"
+            f'👉 ਪੁਸ਼ਟੀ ਲਈ *"1"* ਲਿਖ ਕੇ ਭੇਜੋ, ਜਾਂ ਬਦਲਣ ਲਈ ਨਵਾਂ ਸੁਨੇਹਾ / ਵੌਇਸ ਨੋਟ ਭੇਜੋ।'
+        )
+    else:
+        return (
+            f"🌾 *Did we get this right?*\n\n"
+            f"• *Crop:* {crop}\n"
+            f"• *Quantity:* {qty} quintals ({vehicle})\n"
+            f"• *Arrival:* {arrival}\n\n"
+            f'👉 Reply *"1"* to confirm, or send a new message / voice note to correct it.'
+        )
+
+def get_digital_pass_reply(booking, lang: str = "hi") -> str:
+    if lang == "hi":
+        return (
+            f"🌾 *MandiFlow डिजिटल गेट पास* 🌾\n"
+            f"नमस्ते {booking.farmer_name} जी,\n\n"
+            f"आपका मंडी स्लॉट निश्चित हो गया है:\n"
+            f"🎟️ *टोकन नंबर:* {booking.token_number}\n"
+            f"📍 *वेब्रिज (कांटा):* बे {booking.bay_assigned}\n"
+            f"⏰ *आने का समय:* {booking.scheduled_window_start} - {booking.scheduled_window_end}\n"
+            f"📦 *फसल/मात्रा:* {booking.crop} - {booking.quantity_quintals} क्विंटल\n"
+            f"🚜 *वाहन:* {booking.vehicle_type}\n\n"
+            f"🔒 *सुरक्षित MSP भाव:* ₹{booking.price_lock_rate}/क्विंटल\n"
+            f"🛡️ *डिजिटल सील:* {booking.price_lock_hash}\n"
+            f"(आपका MSP भाव बुकिंग समय पर सुरक्षित कर लिया गया है। मंडी में देरी होने पर भी भाव कम नहीं होगा।)\n\n"
+            f"👉 कृपया आगमन समय से 10 मिनट पहले बे {booking.bay_assigned} पर टोकन दिखाएं।"
+        )
+    elif lang == "pa":
+        return (
+            f"🌾 *MandiFlow ਡਿਜੀਟਲ ਗੇਟ ਪਾਸ* 🌾\n"
+            f"ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ {booking.farmer_name} ਜੀ,\n\n"
+            f"ਤੁਹਾਡਾ ਮੰਡੀ ਸਲਾਟ ਪੱਕਾ ਹੋ ਗਿਆ ਹੈ:\n"
+            f"🎟️ *ਟੋਕਨ ਨੰਬਰ:* {booking.token_number}\n"
+            f"📍 *ਵੇਅਬ੍ਰਿਜ (ਕੰਡਾ):* ਬੇ {booking.bay_assigned}\n"
+            f"⏰ *ਆਉਣ ਦਾ ਸਮਾਂ:* {booking.scheduled_window_start} - {booking.scheduled_window_end}\n"
+            f"📦 *ਫ਼ਸਲ/ਮਾਤਰਾ:* {booking.crop} - {booking.quantity_quintals} ਕੁਇੰਟਲ\n"
+            f"🚜 *ਵਾਹਨ:* {booking.vehicle_type}\n\n"
+            f"🔒 *ਸੁਰੱਖਿਅਤ MSP ਭਾਅ:* ₹{booking.price_lock_rate}/ਕੁਇੰਟਲ\n"
+            f"🛡️ *ਡਿਜੀਟਲ ਸੀਲ:* {booking.price_lock_hash}\n"
+            f"(ਤੁਹਾਡਾ ਸਰਕਾਰੀ MSP ਭਾਅ ਬੁਕਿੰਗ ਵੇਲੇ ਸੁਰੱਖਿਅਤ ਕੀਤਾ ਗਿਆ ਹੈ।)\n\n"
+            f"👉 ਕਿਰਪਾ ਕਰਕੇ ਪਹੁੰਚਣ ਦੇ ਸਮੇਂ ਤੋਂ 10 ਮਿੰਟ ਪਹਿਲਾਂ ਬੇ {booking.bay_assigned} 'ਤੇ ਟੋਕਨ ਦਿਖਾਓ।"
+        )
+    else:
+        return (
+            f"🌾 *MandiFlow Digital Pass* 🌾\n"
+            f"Namaste {booking.farmer_name} ji,\n\n"
+            f"Your Mandi Slot has been confirmed:\n"
+            f"🎟️ *Token Number:* {booking.token_number}\n"
+            f"📍 *Weighbridge:* Bay {booking.bay_assigned}\n"
+            f"⏰ *Arrival Window:* {booking.scheduled_window_start} - {booking.scheduled_window_end}\n"
+            f"📦 *Crop/Qty:* {booking.crop} - {booking.quantity_quintals} Quintals\n"
+            f"🚜 *Vehicle:* {booking.vehicle_type}\n\n"
+            f"🔒 *Slot-Bound Price Lock:* ₹{booking.price_lock_rate}/qtl\n"
+            f"🛡️ *Digital Seal:* {booking.price_lock_hash}\n"
+            f"(Your official MSP rate is cryptographically secured at booking.)\n\n"
+            f"👉 Please show this token at Bay {booking.bay_assigned} 10 minutes prior."
+        )
+
 @app.get("/webhook/whatsapp")
 async def verify_whatsapp_webhook(
     hub_mode: Optional[str] = Query(None, alias="hub.mode"),
@@ -456,65 +568,83 @@ async def whatsapp_webhook(
                             continue
 
                     body_clean = body_text.strip()
+                    clean_lower = body_clean.lower()
 
-                    # Confirmation branch: Farmer confirms prompt
+                    # 1. Greeting / "hi" handler: Ask for preferred language first
+                    is_greeting = clean_lower in ("hi", "hello", "hey", "namaste", "pranam", "start", "shuru", "kisan", "help", "hola")
+                    if is_greeting or (not body_clean and state.state == "idle"):
+                        state.state = "awaiting_language_choice"
+                        state.pending_intent_json = None
+                        db.commit()
+                        send_reply(phone, get_language_menu_prompt())
+                        continue
+
+                    # 2. Language Selection Branch
+                    if state.state == "awaiting_language_choice":
+                        selected_lang = None
+                        if clean_lower in ("1", "hindi", "हिंदी", "हिन्दी"):
+                            selected_lang = "hi"
+                        elif clean_lower in ("2", "punjabi", "ਪੰਜਾਬੀ", "panjabi"):
+                            selected_lang = "pa"
+                        elif clean_lower in ("3", "english", "eng"):
+                            selected_lang = "en"
+
+                        if selected_lang:
+                            state.state = "idle"
+                            state.pending_intent_json = json.dumps({"preferred_language": selected_lang})
+                            db.commit()
+                            send_reply(phone, get_language_ack_prompt(selected_lang))
+                            continue
+                        # If user didn't reply 1, 2, 3 but directly sent their crop/volume details, fall through to booking!
+
+                    # 3. Confirmation branch: Farmer confirms prompt
                     if state.state == "awaiting_confirmation" and state.pending_intent_json:
-                        reply_lower = body_clean.lower()
-                        if reply_lower in ("1", "yes", "confirm", "correct", "haan", "ha", "thik", "theek", "ok", "book"):
+                        if clean_lower in ("1", "yes", "confirm", "correct", "haan", "ha", "thik", "theek", "ok", "book", "ਸਹੀ", "ਹਾਂ"):
                             try:
                                 intent_data = json.loads(state.pending_intent_json)
+                                user_lang = intent_data.get("preferred_language", "hi")
                                 booking = allocate_slot(db, mandi_code="KARNAL-01", parsed_intent=intent_data, lane_type="EXPRESS")
-
-                                reply_msg = (
-                                    f"🌾 *MandiFlow Digital Pass* 🌾\n"
-                                    f"Namaste {booking.farmer_name} ji,\n\n"
-                                    f"Aapka Mandi Slot nishchit ho gaya hai:\n"
-                                    f"🎟️ *Token Number:* {booking.token_number}\n"
-                                    f"📍 *Weighbridge:* Bay {booking.bay_assigned}\n"
-                                    f"⏰ *Arrival Window:* {booking.scheduled_window_start} - {booking.scheduled_window_end}\n"
-                                    f"📦 *Crop/Qty:* {booking.crop} - {booking.quantity_quintals} Quintals\n"
-                                    f"🚜 *Vahan:* {booking.vehicle_type}\n\n"
-                                    f"🔒 *Slot-Bound Price Lock:* ₹{booking.price_lock_rate}/qtl\n"
-                                    f"🛡️ *Digital Seal:* {booking.price_lock_hash}\n"
-                                    f"(Aapka MSP bhav booking samay par surakshit kar liya gaya hai. Mandi me delay hone par bhi rate kam nahi hoga.)\n\n"
-                                    f"👉 Kripya arrival samay se 10 minute pehle gate par Token dikhayein."
-                                )
+                                reply_msg = get_digital_pass_reply(booking, lang=user_lang)
                                 send_reply(phone, reply_msg)
                             except ValueError as e:
                                 send_reply(
                                     phone,
-                                    f"⚠️ *MandiFlow Booking Alert*\n\n{str(e)}\n\n"
-                                    f"Aapka pehle se ek token active hai. Gate par pichla token dikhayein."
+                                    f"⚠️ *MandiFlow Alert*\n\n{str(e)}\n\nAapka pehle se ek token active hai. Gate par pichla token dikhayein."
                                 )
                             finally:
                                 state.state = "idle"
                                 state.pending_intent_json = None
                                 db.commit()
                             continue
-                        # If user sent another text/audio instead of 1, re-parse as fresh/corrected request
+                        # If user sent another message instead of 1, re-parse as fresh/corrected request
 
                     if not body_clean:
-                        send_reply(
-                            phone,
-                            "Namaste Kisan Bandhu! Mandi me slot book karne ke liye apna sandesh ya voice note bhejein.\n"
-                            "Udaharan: '40 quintal gehu kal tractor se'"
-                        )
+                        send_reply(phone, get_language_menu_prompt())
+                        state.state = "awaiting_language_choice"
                         db.commit()
                         continue
 
-                    # Parse Intent via Groq LLM / fallback
+                    # 4. Parse Intent via Groq LLM / fallback
                     intent = parse_farmer_intent(body_clean, caller_phone=norm_phone)
+                    
+                    # Recover user's chosen language if previously selected, else detect from text
+                    user_lang = "hi"
+                    if state.pending_intent_json:
+                        try:
+                            prev_data = json.loads(state.pending_intent_json)
+                            if prev_data.get("preferred_language"):
+                                user_lang = prev_data["preferred_language"]
+                        except Exception:
+                            pass
+                    else:
+                        user_lang = intent.get("language") or "hi"
+
+                    intent["preferred_language"] = user_lang
                     state.state = "awaiting_confirmation"
                     state.pending_intent_json = json.dumps(intent)
                     db.commit()
 
-                    vehicle_part = f" via {intent.get('vehicle_type')}" if intent.get("vehicle_type") else ""
-                    prompt = (
-                        f"Did we get this right?\n"
-                        f"{intent.get('quantity_quintals', 40)} quintals of {intent.get('crop', 'Wheat')}{vehicle_part}, "
-                        f"arriving {intent.get('arrival_date', 'today')}.\n\n"
-                        f'Reply "1" to confirm, or send a new voice note / message to correct it.'
-                    )
+                    prompt = get_confirmation_prompt(intent, lang=user_lang)
                     send_reply(phone, prompt)
 
         return JSONResponse({"status": "ok"})
@@ -648,7 +778,43 @@ def admin_bookings(for_date: Optional[str] = None, db: Session = Depends(get_db)
 @app.post("/api/voice-booking")
 def simulate_voice_or_chat_booking(payload: VoiceBookingRequest, db: Session = Depends(get_db)):
     """Interactive endpoint for the web dashboard simulator (open to farmers)"""
+    msg_clean = payload.message.strip()
+    msg_lower = msg_clean.lower()
+
+    # 1. Greeting Check
+    if msg_lower in ("hi", "hello", "hey", "namaste", "pranam", "start", "shuru", "kisan", "help"):
+        return {
+            "success": True,
+            "parsed_intent": {"type": "GREETING", "step": "language_selection"},
+            "booking": None,
+            "whatsapp_reply": get_language_menu_prompt()
+        }
+
+    # 2. Language Selection Check
+    if msg_lower in ("1", "hindi", "हिंदी", "हिन्दी"):
+        return {
+            "success": True,
+            "parsed_intent": {"type": "LANGUAGE_CHOICE", "selected_language": "hi"},
+            "booking": None,
+            "whatsapp_reply": get_language_ack_prompt("hi")
+        }
+    elif msg_lower in ("2", "punjabi", "ਪੰਜਾਬੀ", "panjabi"):
+        return {
+            "success": True,
+            "parsed_intent": {"type": "LANGUAGE_CHOICE", "selected_language": "pa"},
+            "booking": None,
+            "whatsapp_reply": get_language_ack_prompt("pa")
+        }
+    elif msg_lower in ("3", "english", "eng"):
+        return {
+            "success": True,
+            "parsed_intent": {"type": "LANGUAGE_CHOICE", "selected_language": "en"},
+            "booking": None,
+            "whatsapp_reply": get_language_ack_prompt("en")
+        }
+
     intent = parse_farmer_intent(payload.message, caller_phone=payload.caller_phone)
+    user_lang = intent.get("language") or "hi"
 
     try:
         booking = allocate_slot(
@@ -660,19 +826,7 @@ def simulate_voice_or_chat_booking(payload: VoiceBookingRequest, db: Session = D
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    reply = (
-        f"🌾 *MandiFlow Digital Pass* 🌾\n"
-        f"Namaste {booking.farmer_name} ji,\n\n"
-        f"Aapka Mandi Slot nishchit ho gaya hai:\n"
-        f"🎟️ *Token Number:* {booking.token_number}\n"
-        f"📍 *Weighbridge:* Bay {booking.bay_assigned}\n"
-        f"⏰ *Arrival Window:* {booking.scheduled_window_start} - {booking.scheduled_window_end}\n"
-        f"📦 *Crop/Qty:* {booking.crop} - {booking.quantity_quintals} Quintals\n"
-        f"🚜 *Vahan:* {booking.vehicle_type}\n\n"
-        f"🔒 *Slot-Bound Price Lock:* ₹{booking.price_lock_rate}/qtl\n"
-        f"🛡️ *Digital Seal:* {booking.price_lock_hash}\n"
-        f"(Aapka MSP bhav surakshit hai)."
-    )
+    reply = get_digital_pass_reply(booking, lang=user_lang)
 
     return {
         "success": True,

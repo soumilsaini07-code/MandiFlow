@@ -15,16 +15,24 @@ import confetti from 'canvas-confetti';
 
 const PRESET_PROMPTS = [
   {
-    label: "🌾 40 Qtl Wheat (Rampur)",
-    text: "Namaste, Rampur se 40 quintal gehu tractor me kal subah 10 baje lana hai"
+    label: "👋 'Hi' (Language Menu)",
+    text: "Hi"
   },
   {
-    label: "🟡 35 Qtl Mustard (Taraori)",
-    text: "Taraori se 35 quintal sarso leke aa raha hu kal 11 baje tractor trolley me"
+    label: "1️⃣ हिन्दी (Choose Hindi)",
+    text: "1"
   },
   {
-    label: "🍚 60 Qtl Paddy (Indri)",
-    text: "60 quintal dhan mini truck se Indri se kal subah 9 baje Lana hai"
+    label: "🌾 40 Qtl Wheat (Hindi)",
+    text: "नमस्ते, रामपुर से 40 क्विंटल गेहूं ट्रैक्टर में कल सुबह 10 बजे लाना है"
+  },
+  {
+    label: "🟡 35 Qtl Mustard (Punjabi)",
+    text: "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ, ਤਰਾਵੜੀ ਤੋਂ 35 ਕੁਇੰਟਲ ਸਰ੍ਹੋਂ ਟਰੈਕਟਰ ਵਿੱਚ ਕੱਲ੍ਹ 11 ਵਜੇ ਲਿਆਉਣੀ ਹੈ"
+  },
+  {
+    label: "🍚 60 Qtl Paddy (English)",
+    text: "60 quintals of paddy from Indri tomorrow at 9 AM by mini truck"
   },
   {
     label: "🌽 25 Qtl Maize (Nilokheri)",

@@ -48,6 +48,15 @@ def normalize_crop_name(raw_crop: str) -> str:
             return crop_key.capitalize()
     return raw_crop.capitalize() if raw_crop else "Wheat"
 
+def detect_language(text: str) -> str:
+    """Detects whether text is Gurmukhi/Punjabi, Devanagari/Hindi, Hinglish, or English"""
+    lowered = (text or "").lower()
+    if any('\u0a00' <= ch <= '\u0a7f' for ch in text) or any(w in lowered for w in ["sat sri akal", "tuhanu", "kanak", "kalli", "punjabi"]):
+        return "pa"
+    if any('\u0900' <= ch <= '\u097f' for ch in text) or any(w in lowered for w in ["namaste", "gehu", "kisan", "subah", "baje", "kripya", "lana", "aana", "hai", "kal"]):
+        return "hi"
+    return "en"
+
 def parse_with_llm(text: str) -> Optional[Dict[str, Any]]:
     """
     Calls Groq (or Gemini) API using structured JSON output to extract entities.
@@ -189,6 +198,7 @@ def parse_farmer_intent(text: str, caller_phone: Optional[str] = None) -> Dict[s
             "preferred_time_window": llm_extracted.get("preferred_time_window") or "09:00",
             "price_lock_rate": msp_price,
             "confidence": 0.96,
+            "language": detect_language(cleaned),
             "source": "LLM_STRUCTURED_OUTPUT",
             "raw_text": cleaned
         }
@@ -306,6 +316,7 @@ def parse_farmer_intent(text: str, caller_phone: Optional[str] = None) -> Dict[s
         "preferred_time_window": preferred_time_str,
         "price_lock_rate": msp_price,
         "confidence": confidence,
+        "language": detect_language(cleaned),
         "source": "REGEX_KEYWORD_FALLBACK",
         "raw_text": cleaned
     }
