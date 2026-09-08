@@ -111,6 +111,19 @@ export default function StitchHeader({ activeTab, setActiveTab }) {
             </div>
 
             <button 
+              onClick={() => setActiveTab('arthiya')}
+              className={`px-3.5 py-2 rounded-xl font-semibold text-xs transition-all shadow-sm cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'arthiya'
+                  ? 'bg-amber-600 text-white shadow-md'
+                  : 'bg-surface-low text-primary-deep hover:bg-surface-low/80 border border-border-subtle'
+              }`}
+              title="Commission Agent (Arhtiya) Portal"
+            >
+              <span className="material-symbols-outlined text-[15px]">storefront</span>
+              <span>Arhtiya Portal</span>
+            </button>
+
+            <button 
               onClick={() => setActiveTab('officer')}
               className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all shadow-sm cursor-pointer flex items-center gap-1.5 ${
                 activeTab === 'officer'

@@ -25,6 +25,24 @@ class Mandi(Base):
     weighbridges = relationship("Weighbridge", back_populates="mandi", cascade="all, delete-orphan")
     bookings = relationship("SlotBooking", back_populates="mandi", cascade="all, delete-orphan")
     incidents = relationship("DisruptionIncident", back_populates="mandi", cascade="all, delete-orphan")
+    arhtiyas = relationship("Arhtiya", back_populates="mandi", cascade="all, delete-orphan")
+
+
+class Arhtiya(Base):
+    __tablename__ = "arhtiyas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(128), nullable=False)
+    license_number = Column(String(64), unique=True, index=True, nullable=False)
+    phone = Column(String(32), unique=True, index=True, nullable=False)
+    mandi_id = Column(Integer, ForeignKey("mandis.id"), nullable=False)
+    secret_key = Column(String(64), nullable=False)
+    commission_rate = Column(Float, default=2.5)  # Percentage, e.g. 2.5%
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    mandi = relationship("Mandi", back_populates="arhtiyas")
+    farmers = relationship("Farmer", back_populates="arhtiya")
+    bookings = relationship("SlotBooking", back_populates="arhtiya")
 
 
 class Weighbridge(Base):
@@ -49,7 +67,9 @@ class Farmer(Base):
     village = Column(String(128), default="Rampur")
     land_holding_acres = Column(Float, default=3.5)
     kisan_id = Column(String(64), unique=True, default=lambda: f"KISAN-{uuid.uuid4().hex[:8].upper()}")
+    arhtiya_id = Column(Integer, ForeignKey("arhtiyas.id"), nullable=True, index=True)
 
+    arhtiya = relationship("Arhtiya", back_populates="farmers")
     bookings = relationship("SlotBooking", back_populates="farmer")
 
 
@@ -60,6 +80,7 @@ class SlotBooking(Base):
     token_number = Column(String(64), unique=True, index=True)
     mandi_id = Column(Integer, ForeignKey("mandis.id"))
     farmer_id = Column(Integer, ForeignKey("farmers.id"), nullable=True)
+    arhtiya_id = Column(Integer, ForeignKey("arhtiyas.id"), nullable=True, index=True)
 
     farmer_name = Column(String(128), nullable=False)
     farmer_phone = Column(String(32), nullable=False, index=True)
@@ -102,6 +123,7 @@ class SlotBooking(Base):
 
     mandi = relationship("Mandi", back_populates="bookings")
     farmer = relationship("Farmer", back_populates="bookings")
+    arhtiya = relationship("Arhtiya", back_populates="bookings")
 
     def compute_hash(self) -> str:
         payload = f"{self.token_number}:{self.farmer_phone}:{self.crop}:{self.price_lock_rate}:{self.price_lock_timestamp}"

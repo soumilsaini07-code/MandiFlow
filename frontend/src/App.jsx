@@ -10,9 +10,10 @@ import VoiceSimulator from './components/VoiceSimulator';
 import DisruptionSimulator from './components/DisruptionSimulator';
 import MarketIntelligence from './components/MarketIntelligence';
 import OfficerPortal from './components/OfficerPortal';
+import ArthiyaPortal from './components/ArthiyaPortal';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('overview'); // overview, parchi, voice, agmarknet, disruptions, officer
+  const [activeTab, setActiveTab] = useState('overview'); // overview, parchi, voice, agmarknet, disruptions, officer, arthiya
   const [dashboardData, setDashboardData] = useState(null);
   const [currentSelectedPass, setCurrentSelectedPass] = useState(null);
   const [backendError, setBackendError] = useState(false);
@@ -195,6 +196,12 @@ export default function App() {
           <OfficerPortal 
             dashboardData={dashboardData}
             refreshData={fetchDashboard}
+            onBackToFarmerView={() => setActiveTab('overview')}
+          />
+        )}
+
+        {activeTab === 'arthiya' && (
+          <ArthiyaPortal 
             onBackToFarmerView={() => setActiveTab('overview')}
           />
         )}

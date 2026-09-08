@@ -3,7 +3,7 @@ import pyotp
 import hashlib
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Base, Mandi, Weighbridge, Farmer, SlotBooking, DisruptionIncident, NotificationLog
+from models import Base, Mandi, Weighbridge, Farmer, SlotBooking, DisruptionIncident, NotificationLog, Arhtiya
 from mandi_data_service import get_crop_msp
 
 import os
@@ -15,6 +15,7 @@ engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def seed_database():
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
 
@@ -23,6 +24,7 @@ def seed_database():
     db.query(DisruptionIncident).delete()
     db.query(SlotBooking).delete()
     db.query(Farmer).delete()
+    db.query(Arhtiya).delete()
     db.query(Weighbridge).delete()
     db.query(Mandi).delete()
     db.commit()
@@ -60,6 +62,37 @@ def seed_database():
     )
     db.add_all([bay1, bay2])
     db.commit()
+
+    # 2b. Sample Arhtiyas (Licensed Commission Agents)
+    arhtiya1 = Arhtiya(
+        name="Chaudhary Devi Lal Trading Co.",
+        license_number="HR-KAR-A101",
+        phone="+919812001122",
+        mandi_id=mandi.id,
+        secret_key="arhtiya_secret_101",
+        commission_rate=2.5
+    )
+    arhtiya2 = Arhtiya(
+        name="Kisan Sahayta Arhtiya Kendra",
+        license_number="HR-KAR-A102",
+        phone="+919812003344",
+        mandi_id=mandi.id,
+        secret_key="arhtiya_secret_102",
+        commission_rate=2.5
+    )
+    arhtiya3 = Arhtiya(
+        name="Bharat Kisan Commission Agency",
+        license_number="HR-KAR-A103",
+        phone="+919812005566",
+        mandi_id=mandi.id,
+        secret_key="arhtiya_secret_103",
+        commission_rate=2.0
+    )
+    db.add_all([arhtiya1, arhtiya2, arhtiya3])
+    db.commit()
+    db.refresh(arhtiya1)
+    db.refresh(arhtiya2)
+    db.refresh(arhtiya3)
 
     # 3. Farmers & Bookings
     today_str = datetime.date.today().strftime("%Y-%m-%d")
@@ -262,11 +295,19 @@ def seed_database():
     ]
 
     for idx, f_data in enumerate(sample_farmers_data, 1):
+        if idx <= 5:
+            assigned_arhtiya_id = arhtiya1.id
+        elif idx <= 9:
+            assigned_arhtiya_id = arhtiya2.id
+        else:
+            assigned_arhtiya_id = None
+
         farmer = Farmer(
             phone=f_data["phone"],
             name=f_data["name"],
             village=f_data["village"],
-            land_holding_acres=3.2 + (idx * 0.4)
+            land_holding_acres=3.2 + (idx * 0.4),
+            arhtiya_id=assigned_arhtiya_id
         )
         db.add(farmer)
         db.commit()
@@ -282,6 +323,7 @@ def seed_database():
             token_number=token_no,
             mandi_id=mandi.id,
             farmer_id=farmer.id,
+            arhtiya_id=assigned_arhtiya_id,
             farmer_name=farmer.name,
             farmer_phone=farmer.phone,
             village=farmer.village,

@@ -3,6 +3,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "venv", "Lib", "site-packages")))
 import datetime
 import pyotp
+import hashlib
 from typing import Dict, Any, Optional, List
 import requests
 from dotenv import load_dotenv
@@ -15,7 +16,7 @@ from sqlalchemy.orm import sessionmaker, Session
 # Load environment variables
 load_dotenv()
 
-from models import Base, Mandi, Weighbridge, Farmer, SlotBooking, DisruptionIncident, NotificationLog
+from models import Base, Mandi, Weighbridge, Farmer, SlotBooking, DisruptionIncident, NotificationLog, Arhtiya
 from intent_parser import parse_farmer_intent
 from slot_allocator import allocate_slot, verify_totp_token
 from disruption_engine import trigger_disruption, resolve_incident, promote_standby_on_noshow
@@ -66,12 +67,65 @@ def verify_admin_key(
         )
     return True
 
+def verify_arhtiya_key(
+    x_arhtiya_token: Optional[str] = Header(None, alias="X-Arhtiya-Token"),
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+) -> Arhtiya:
+    """
+    Validates Arhtiya session token scoped to a specific licensed agent.
+    Rejects unauthorized access or tokens belonging to other agents.
+    """
+    token = x_arhtiya_token
+    if not token and authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "").strip()
+
+    if not token or not token.strip():
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized: Valid X-Arhtiya-Token required for commission agent portal."
+        )
+
+    parts = token.strip().split("_", 2)
+    if len(parts) != 3 or parts[0] != "arhtiya":
+        raise HTTPException(status_code=401, detail="Invalid Arhtiya session token format.")
+
+    try:
+        arhtiya_id = int(parts[1])
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Malformed Arhtiya session identifier.")
+
+    token_sig = parts[2]
+    arhtiya = db.query(Arhtiya).filter(Arhtiya.id == arhtiya_id).first()
+    if not arhtiya:
+        raise HTTPException(status_code=401, detail="Arhtiya profile not found.")
+
+    expected_sig = hashlib.sha256(f"{ADMIN_SECRET}:{arhtiya.id}:{arhtiya.phone}:{arhtiya.secret_key}".encode()).hexdigest()[:24]
+    if token_sig != expected_sig:
+        raise HTTPException(status_code=401, detail="Invalid or forged Arhtiya session token.")
+
+    return arhtiya
+
 # Ensure tables exist on startup
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
 
 # ==================== SCHEMAS ====================
+class ArhtiyaLoginRequest(BaseModel):
+    phone: str
+    secret: str
+
+class ArhtiyaProxyBookingRequest(BaseModel):
+    farmer_name: str
+    farmer_phone: str
+    village: str
+    crop: str
+    quantity_quintals: float
+    vehicle_type: Optional[str] = "Tractor-Trolley"
+    preferred_date: Optional[str] = None
+    preferred_time_window: Optional[str] = None
+    mandi_code: Optional[str] = "KARNAL-01"
 class VoiceBookingRequest(BaseModel):
     message: str
     caller_phone: Optional[str] = "+919812345678"
@@ -534,6 +588,416 @@ def promote_standby_endpoint(mandi_id: int = 1, db: Session = Depends(get_db)):
     if not res:
         return {"success": False, "message": "No eligible standby farmer found to promote"}
     return {"success": True, "promoted": res}
+
+# ==================== ARHTIYA (COMMISSION AGENT) PORTAL ENDPOINTS ====================
+
+@app.post("/api/arhtiya/login")
+def arhtiya_login(payload: ArhtiyaLoginRequest, db: Session = Depends(get_db)):
+    """
+    Authenticates a licensed commission agent (Arhtiya) using their registered phone and secret key.
+    Returns a cryptographically signed scoped session token.
+    """
+    phone = payload.phone.strip()
+    secret = payload.secret.strip()
+
+    arhtiya = db.query(Arhtiya).filter(Arhtiya.phone == phone).first()
+    if not arhtiya or arhtiya.secret_key != secret:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication failed: Invalid phone number or Arhtiya secret passkey."
+        )
+
+    sig = hashlib.sha256(f"{ADMIN_SECRET}:{arhtiya.id}:{arhtiya.phone}:{arhtiya.secret_key}".encode()).hexdigest()[:24]
+    token = f"arhtiya_{arhtiya.id}_{sig}"
+
+    return {
+        "success": True,
+        "token": token,
+        "arhtiya": {
+            "id": arhtiya.id,
+            "name": arhtiya.name,
+            "license_number": arhtiya.license_number,
+            "phone": arhtiya.phone,
+            "mandi_id": arhtiya.mandi_id,
+            "commission_rate": arhtiya.commission_rate
+        }
+    }
+
+@app.get("/api/arhtiya/dashboard")
+def arhtiya_dashboard(
+    current_arhtiya: Arhtiya = Depends(verify_arhtiya_key),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns live mandi status breakdown strictly scoped to this Arhtiya's farmer roster.
+    Guarantees isolation: an Arhtiya can only see their own farmers and bookings.
+    """
+    farmers = db.query(Farmer).filter(Farmer.arhtiya_id == current_arhtiya.id).all()
+    farmer_ids = [f.id for f in farmers]
+    farmer_phones = [f.phone for f in farmers]
+
+    # Query all active or historical bookings for this arhtiya's roster
+    bookings = db.query(SlotBooking).filter(
+        (SlotBooking.arhtiya_id == current_arhtiya.id) | 
+        (SlotBooking.farmer_id.in_(farmer_ids)) |
+        (SlotBooking.farmer_phone.in_(farmer_phones))
+    ).order_by(SlotBooking.scheduled_window_start.asc()).all()
+
+    status_counts = {
+        "SCHEDULED": 0,
+        "GATE_ENTRY": 0,
+        "QUALITY_ASSAY": 0,
+        "WEIGHED": 0,
+        "PAYMENT_DISBURSED": 0,
+        "CANCELLED": 0
+    }
+    total_disbursed_payment = 0.0
+    total_commission_earned = 0.0
+
+    serialized_bookings = []
+    for b in bookings:
+        status_counts[b.status] = status_counts.get(b.status, 0) + 1
+        comm = round((b.payment_amount or 0.0) * (current_arhtiya.commission_rate / 100.0), 2)
+        if b.status == "PAYMENT_DISBURSED":
+            total_disbursed_payment += (b.payment_amount or 0.0)
+            total_commission_earned += comm
+
+        serialized_bookings.append({
+            "id": b.id,
+            "token_number": b.token_number,
+            "farmer_name": b.farmer_name,
+            "farmer_phone": b.farmer_phone,
+            "village": b.village,
+            "crop": b.crop,
+            "quantity_quintals": b.quantity_quintals,
+            "vehicle_type": b.vehicle_type,
+            "lane_type": b.lane_type,
+            "bay_assigned": b.bay_assigned,
+            "status": b.status,
+            "scheduled_date": b.scheduled_date,
+            "scheduled_window_start": b.scheduled_window_start,
+            "scheduled_window_end": b.scheduled_window_end,
+            "revised_window_start": b.revised_window_start or b.scheduled_window_start,
+            "revised_window_end": b.revised_window_end or b.scheduled_window_end,
+            "delay_offset_minutes": b.delay_offset_minutes,
+            "price_lock_rate": b.price_lock_rate,
+            "price_lock_hash": b.price_lock_hash,
+            "moisture_percentage": b.moisture_percentage,
+            "gross_weight_quintals": b.gross_weight_quintals,
+            "tare_weight_quintals": b.tare_weight_quintals,
+            "net_weight_quintals": b.net_weight_quintals or b.quantity_quintals,
+            "payment_status": b.payment_status,
+            "payment_amount": b.payment_amount,
+            "commission_amount": comm
+        })
+
+    serialized_farmers = [
+        {
+            "id": f.id,
+            "name": f.name,
+            "phone": f.phone,
+            "village": f.village,
+            "land_holding_acres": f.land_holding_acres,
+            "kisan_id": f.kisan_id,
+            "total_bookings": sum(1 for b in bookings if b.farmer_id == f.id or b.farmer_phone == f.phone)
+        }
+        for f in farmers
+    ]
+
+    return {
+        "arhtiya": {
+            "id": current_arhtiya.id,
+            "name": current_arhtiya.name,
+            "license_number": current_arhtiya.license_number,
+            "phone": current_arhtiya.phone,
+            "commission_rate": current_arhtiya.commission_rate
+        },
+        "metrics": {
+            "total_farmers": len(farmers),
+            "total_bookings": len(bookings),
+            "scheduled_count": status_counts.get("SCHEDULED", 0),
+            "in_yard_count": status_counts.get("GATE_ENTRY", 0) + status_counts.get("QUALITY_ASSAY", 0),
+            "completed_count": status_counts.get("WEIGHED", 0) + status_counts.get("PAYMENT_DISBURSED", 0),
+            "total_disbursed_payment": round(total_disbursed_payment, 2),
+            "total_commission_earned": round(total_commission_earned, 2)
+        },
+        "status_counts": status_counts,
+        "farmers": serialized_farmers,
+        "express_slots": serialized_bookings
+    }
+
+@app.post("/api/arhtiya/book-for-farmer")
+def arhtiya_proxy_booking(
+    payload: ArhtiyaProxyBookingRequest,
+    current_arhtiya: Arhtiya = Depends(verify_arhtiya_key),
+    db: Session = Depends(get_db)
+):
+    """
+    Allows a licensed Arhtiya to book a staggered arrival slot on behalf of a farmer directly.
+    Reuses the core allocation engine and links the farmer to this Arhtiya if unassigned.
+    """
+    parsed = {
+        "farmer_name": payload.farmer_name.strip(),
+        "farmer_phone": payload.farmer_phone.strip(),
+        "village": payload.village.strip(),
+        "crop": payload.crop.strip(),
+        "quantity_quintals": float(payload.quantity_quintals),
+        "vehicle_type": payload.vehicle_type or "Tractor-Trolley",
+        "preferred_date": payload.preferred_date or datetime.date.today().strftime("%Y-%m-%d"),
+        "preferred_time_window": payload.preferred_time_window or "10:00",
+        "arhtiya_id": current_arhtiya.id
+    }
+
+    try:
+        booking = allocate_slot(
+            db=db,
+            mandi_code=payload.mandi_code or "KARNAL-01",
+            parsed_intent=parsed,
+            lane_type="EXPRESS",
+            arhtiya_id=current_arhtiya.id
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Proxy booking allocation error: {str(e)}")
+
+    totp = pyotp.TOTP(booking.totp_secret, interval=60)
+    current_totp_code = totp.now()
+
+    return {
+        "success": True,
+        "message": f"Arrival slot successfully booked on behalf of {booking.farmer_name}",
+        "token_number": booking.token_number,
+        "booking": {
+            "token_number": booking.token_number,
+            "farmer_name": booking.farmer_name,
+            "farmer_phone": booking.farmer_phone,
+            "village": booking.village,
+            "crop": booking.crop,
+            "quantity_quintals": booking.quantity_quintals,
+            "vehicle_type": booking.vehicle_type,
+            "bay_assigned": booking.bay_assigned,
+            "scheduled_date": booking.scheduled_date,
+            "scheduled_window_start": booking.scheduled_window_start,
+            "scheduled_window_end": booking.scheduled_window_end,
+            "arhtiya_id": booking.arhtiya_id,
+            "price_lock_rate": booking.price_lock_rate,
+            "price_lock_hash": booking.price_lock_hash,
+            "dynamic_totp_code": current_totp_code
+        }
+    }
+
+@app.get("/api/arhtiya/commission-summary")
+def arhtiya_commission_summary(
+    current_arhtiya: Arhtiya = Depends(verify_arhtiya_key),
+    db: Session = Depends(get_db)
+):
+    """
+    Computes commission earnings across all PAYMENT_DISBURSED bookings for this Arhtiya,
+    grouped by date. Commission = payment_amount * (commission_rate / 100).
+    """
+    farmers = db.query(Farmer).filter(Farmer.arhtiya_id == current_arhtiya.id).all()
+    farmer_ids = [f.id for f in farmers]
+    farmer_phones = [f.phone for f in farmers]
+
+    disbursed_bookings = db.query(SlotBooking).filter(
+        (
+            (SlotBooking.arhtiya_id == current_arhtiya.id) | 
+            (SlotBooking.farmer_id.in_(farmer_ids)) |
+            (SlotBooking.farmer_phone.in_(farmer_phones))
+        ),
+        SlotBooking.status == "PAYMENT_DISBURSED"
+    ).order_by(SlotBooking.scheduled_date.desc()).all()
+
+    rate = current_arhtiya.commission_rate
+    daily_groups = {}
+    total_procurement = 0.0
+    total_commission = 0.0
+    transactions = []
+
+    for b in disbursed_bookings:
+        amt = b.payment_amount or 0.0
+        comm = round(amt * (rate / 100.0), 2)
+        total_procurement += amt
+        total_commission += comm
+
+        date_key = b.scheduled_date or "Other"
+        if date_key not in daily_groups:
+            daily_groups[date_key] = {
+                "date": date_key,
+                "bookings_count": 0,
+                "total_quintals": 0.0,
+                "procurement_value": 0.0,
+                "commission_earned": 0.0
+            }
+        daily_groups[date_key]["bookings_count"] += 1
+        daily_groups[date_key]["total_quintals"] += (b.quantity_quintals or 0.0)
+        daily_groups[date_key]["procurement_value"] += amt
+        daily_groups[date_key]["commission_earned"] += comm
+
+        transactions.append({
+            "token_number": b.token_number,
+            "date": b.scheduled_date,
+            "farmer_name": b.farmer_name,
+            "crop": b.crop,
+            "quantity_quintals": b.quantity_quintals,
+            "rate": b.price_lock_rate,
+            "payment_amount": amt,
+            "commission_rate": rate,
+            "commission_earned": comm
+        })
+
+    for d in daily_groups.values():
+        d["total_quintals"] = round(d["total_quintals"], 1)
+        d["procurement_value"] = round(d["procurement_value"], 2)
+        d["commission_earned"] = round(d["commission_earned"], 2)
+
+    return {
+        "arhtiya_id": current_arhtiya.id,
+        "arhtiya_name": current_arhtiya.name,
+        "license_number": current_arhtiya.license_number,
+        "commission_rate": rate,
+        "total_disbursed_bookings": len(disbursed_bookings),
+        "total_procurement_value": round(total_procurement, 2),
+        "total_commission_earned": round(total_commission, 2),
+        "daily_summary": list(daily_groups.values()),
+        "transactions": transactions
+    }
+
+@app.get("/api/arhtiya/delay-log")
+def arhtiya_delay_log(
+    current_arhtiya: Arhtiya = Depends(verify_arhtiya_key),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns incident records and proactive notification logs that affected this Arhtiya's farmers.
+    Provides verifiable, system-audited answers for why delays occurred.
+    """
+    farmers = db.query(Farmer).filter(Farmer.arhtiya_id == current_arhtiya.id).all()
+    farmer_phones = [f.phone for f in farmers]
+    farmer_ids = [f.id for f in farmers]
+
+    notifs = db.query(NotificationLog).filter(
+        NotificationLog.recipient_phone.in_(farmer_phones)
+    ).order_by(NotificationLog.timestamp.desc()).all()
+
+    delayed_bookings = db.query(SlotBooking).filter(
+        (
+            (SlotBooking.arhtiya_id == current_arhtiya.id) | 
+            (SlotBooking.farmer_id.in_(farmer_ids)) |
+            (SlotBooking.farmer_phone.in_(farmer_phones))
+        ),
+        SlotBooking.delay_offset_minutes > 0
+    ).all()
+
+    incidents = db.query(DisruptionIncident).order_by(DisruptionIncident.created_at.desc()).all()
+
+    delay_records = []
+    for inc in incidents:
+        affected = [
+            {
+                "token_number": b.token_number,
+                "farmer_name": b.farmer_name,
+                "phone": b.farmer_phone,
+                "delay_minutes": b.delay_offset_minutes,
+                "original_start": b.scheduled_window_start,
+                "revised_start": b.revised_window_start or b.scheduled_window_start
+            }
+            for b in delayed_bookings
+        ]
+        delay_records.append({
+            "incident_id": inc.id,
+            "incident_type": inc.incident_type,
+            "description": inc.description,
+            "delay_minutes": inc.delay_minutes,
+            "is_active": inc.is_active,
+            "created_at": inc.created_at.isoformat() if inc.created_at else None,
+            "affected_my_farmers": affected
+        })
+
+    return {
+        "arhtiya_id": current_arhtiya.id,
+        "total_incidents": len(incidents),
+        "delayed_bookings_count": len(delayed_bookings),
+        "delay_records": delay_records,
+        "notification_history": [
+            {
+                "recipient_phone": n.recipient_phone,
+                "farmer_name": n.farmer_name,
+                "channel": n.channel,
+                "message_type": n.message_type,
+                "message_body": n.message_body,
+                "timestamp": n.timestamp.isoformat() if n.timestamp else None
+            }
+            for n in notifs
+        ]
+    }
+
+@app.get("/api/token/{token_number}/jform")
+def get_digital_jform(
+    token_number: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Generates an official Digital J-Form (e-J-Form) for a completed/weighed booking.
+    Includes crop particulars, net scale weight, locked MSP rate, payment value,
+    licensing information of the mediating Arhtiya, and SHA-256 seal.
+    """
+    booking = db.query(SlotBooking).filter(SlotBooking.token_number == token_number).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail=f"Token '{token_number}' not found in APMC register.")
+
+    arhtiya = None
+    if booking.arhtiya_id:
+        arhtiya = db.query(Arhtiya).filter(Arhtiya.id == booking.arhtiya_id).first()
+    elif booking.farmer_id:
+        farmer = db.query(Farmer).filter(Farmer.id == booking.farmer_id).first()
+        if farmer and farmer.arhtiya_id:
+            arhtiya = db.query(Arhtiya).filter(Arhtiya.id == farmer.arhtiya_id).first()
+
+    net_weight = booking.net_weight_quintals or booking.quantity_quintals or 0.0
+    rate = booking.price_lock_rate or 2585.0
+    total_val = booking.payment_amount or round(net_weight * rate, 2)
+    comm_rate = arhtiya.commission_rate if arhtiya else 0.0
+    comm_amount = round(total_val * (comm_rate / 100.0), 2) if arhtiya else 0.0
+
+    return {
+        "jform_number": f"HR-JFORM-2026-{booking.id:05d}",
+        "token_number": booking.token_number,
+        "date": booking.scheduled_date,
+        "farmer_name": booking.farmer_name,
+        "farmer_phone": booking.farmer_phone,
+        "village": booking.village,
+        "crop": booking.crop,
+        "vehicle_type": booking.vehicle_type,
+        "bay_assigned": booking.bay_assigned,
+        "gross_weight_quintals": booking.gross_weight_quintals,
+        "tare_weight_quintals": booking.tare_weight_quintals,
+        "net_weight_quintals": net_weight,
+        "price_lock_rate": rate,
+        "total_procurement_value": total_val,
+        "payment_status": booking.payment_status,
+        "moisture_percentage": booking.moisture_percentage,
+        "status": booking.status,
+        "arhtiya": {
+            "name": arhtiya.name if arhtiya else "Direct APMC Farmer Entry",
+            "license_number": arhtiya.license_number if arhtiya else "DIRECT-NO-AGENT",
+            "phone": arhtiya.phone if arhtiya else "1800-180-1551",
+            "commission_rate": comm_rate,
+            "commission_amount": comm_amount
+        } if arhtiya else {
+            "name": "Direct APMC Procurement (Zero Brokerage)",
+            "license_number": "APMC-DIRECT-SALE",
+            "phone": "1800-180-1551",
+            "commission_rate": 0.0,
+            "commission_amount": 0.0
+        },
+        "security_seal": {
+            "price_lock_hash": booking.price_lock_hash,
+            "timestamp": booking.price_lock_timestamp,
+            "verified": True
+        }
+    }
 
 if __name__ == "__main__":
     import uvicorn

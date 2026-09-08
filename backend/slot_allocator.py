@@ -92,14 +92,17 @@ def allocate_slot(
     db: Session,
     mandi_code: str,
     parsed_intent: Dict[str, Any],
-    lane_type: str = "EXPRESS"
+    lane_type: str = "EXPRESS",
+    arhtiya_id: Optional[int] = None
 ) -> SlotBooking:
     """
     Allocates a verified slot, generates TOTP security keys and price-lock certificate.
     Enforces per-phone rate limiting to prevent duplicate active bookings on the same date.
+    Links farmer to arhtiya if booking on farmer's behalf.
     """
     phone = parsed_intent.get("farmer_phone", "+919812345678")
     preferred_date = parsed_intent.get("preferred_date", datetime.date.today().strftime("%Y-%m-%d"))
+    target_arhtiya_id = arhtiya_id or parsed_intent.get("arhtiya_id")
 
     # Priority 2, Item 7: Check per-phone active booking cap for this date
     existing_active = db.query(SlotBooking).filter(
@@ -136,11 +139,15 @@ def allocate_slot(
         farmer = Farmer(
             phone=phone,
             name=parsed_intent.get("farmer_name", "Kisan Bandhu"),
-            village=parsed_intent.get("village", "Rampur")
+            village=parsed_intent.get("village", "Rampur"),
+            arhtiya_id=target_arhtiya_id
         )
         db.add(farmer)
         db.commit()
         db.refresh(farmer)
+    elif target_arhtiya_id and not farmer.arhtiya_id:
+        farmer.arhtiya_id = target_arhtiya_id
+        db.commit()
 
     # Determine window
     preferred_time = parsed_intent.get("preferred_time_window", "09:00")
@@ -172,6 +179,7 @@ def allocate_slot(
         token_number=token_number,
         mandi_id=mandi.id,
         farmer_id=farmer.id,
+        arhtiya_id=farmer.arhtiya_id or target_arhtiya_id,
         farmer_name=farmer.name,
         farmer_phone=farmer.phone,
         village=parsed_intent.get("village", farmer.village),
