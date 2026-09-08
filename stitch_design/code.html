@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AgriQueue AI - Smart Kisan Mandi Arrival Portal</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;0,7..72,700;1,7..72,400&amp;family=Nunito+Sans:ital,opsz,wght@0,6..12,300;0,6..12,400;0,6..12,500;0,6..12,600;0,6..12,700;1,6..12,400&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface": "#faf7f2",
+            "background": "#faf7f2",
+            "surface-low": "#f4efe6",
+            "surface-card": "#ffffff",
+            "primary": "#4a7c59",
+            "primary-dark": "#365c41",
+            "primary-deep": "#1f3b28",
+            "primary-light": "#eaf3ec",
+            "secondary": "#636d65",
+            "on-surface": "#232b25",
+            "on-surface-subtle": "#667067",
+            "accent": "#b8702c",
+            "accent-soft": "#fbf4eb",
+            "border-subtle": "#e6e0d4",
+            "border-light": "#ede8de"
+          },
+          borderRadius: {
+            "DEFAULT": "0.5rem",
+            "lg": "1rem",
+            "xl": "1.25rem",
+            "2xl": "1.5rem",
+            "3xl": "2rem",
+            "full": "9999px"
+          },
+          fontFamily: {
+            headline: ['"Literata"', 'serif'],
+            display: ['"Literata"', 'serif'],
+            body: ['"Nunito Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    body {
+      background-color: #faf7f2;
+      color: #232b25;
+      font-family: 'Nunito Sans', sans-serif;
+    }
+    h1, h2, h3, .font-display {
+      font-family: 'Literata', Georgia, serif;
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface antialiased min-h-screen selection:bg-primary selection:text-white">
+<!-- Subtle, Clean Top Utility Bar -->
+<div class="border-b border-border-light bg-surface-low/60 text-xs py-2 px-6">
+<div class="max-w-6xl mx-auto flex items-center justify-between text-on-surface-subtle">
+<div class="flex items-center gap-2 font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+<span>Govt. of India Initiative • e-NAM Integrated Mandi Pacing</span>
+</div>
+<div class="flex items-center gap-4 text-[13px]">
+<span>Toll-Free Kisan Helpline: <strong class="text-primary-deep font-semibold">1800-180-1551</strong></span>
+</div>
+</div>
+</div>
+<!-- Clean, Spacious Header -->
+<header class="sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-border-light">
+<div class="max-w-6xl mx-auto h-20 px-6 flex items-center justify-between">
+<!-- Brand -->
+<a class="flex items-center gap-3" href="#">
+<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-sm">
+<span class="material-symbols-outlined text-[22px]">eco</span>
+</div>
+<div>
+<span class="text-xl font-bold tracking-tight text-primary-deep font-display block leading-none">AgriQueue AI</span>
+<span class="text-[11px] text-on-surface-subtle font-medium">Kisan Mandi Smart Arrival</span>
+</div>
+</a>
+<!-- Minimal Navigation -->
+<nav class="hidden md:flex items-center gap-8 text-sm font-semibold text-on-surface-subtle">
+<a class="hover:text-primary transition-colors text-on-surface" href="#mandi-status">Live Mandi</a>
+<a class="hover:text-primary transition-colors" href="#how-it-works">How It Works</a>
+<a class="hover:text-primary transition-colors" href="#impact">Why It Matters</a>
+<a class="hover:text-primary transition-colors" href="#officers">APMC Officers</a>
+</nav>
+<!-- Language & CTA Button -->
+<div class="flex items-center gap-4">
+<button class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-on-surface-subtle hover:text-on-surface transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">translate</span>
+<span>हिन्दी • ਪੰਜਾਬੀ • EN</span>
+</button>
+<a class="px-5 py-2.5 rounded-xl bg-primary text-white hover:bg-primary-dark font-semibold text-sm transition-all shadow-sm" href="#officers">
+          Officer Portal
+        </a>
+</div>
+</div>
+</header>
+<main>
+<!-- Hero Section: Spacious, Calm, Decluttered -->
+<section class="pt-16 pb-24 md:pt-20 md:pb-28 px-6">
+<div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-14 items-center">
+<!-- Left: Punchy Message & Clean Search Form -->
+<div class="lg:col-span-7 space-y-8">
+<div class="space-y-4">
+<span class="text-xs font-bold tracking-wider text-accent uppercase block">Paced Harvest Logistics</span>
+<h1 class="text-4xl sm:text-5xl font-bold text-primary-deep leading-[1.15] font-display">
+              Smart Mandi Arrivals.<br/>
+<span class="text-accent">Zero Highway Gridlock.</span>
+</h1>
+<p class="text-base sm:text-lg text-secondary leading-relaxed max-w-xl">
+              Book a guaranteed 15-minute weighbridge arrival slot via WhatsApp or a missed call. Avoid 3-day tractor queues and receive direct MSP payments in your bank account.
+            </p>
+</div>
+<!-- Streamlined Token Lookup Box -->
+<div class="p-6 rounded-2xl bg-surface-card border border-border-subtle shadow-sm max-w-xl space-y-4">
+<div class="text-xs font-semibold text-on-surface-subtle">
+              Check Your Digital Token / Arrival Slot (e-Parchi)
+            </div>
+<form class="flex flex-col sm:flex-row gap-3" onsubmit="event.preventDefault(); alert('Pass #AGRI-1042 Verified!\nFarmer: Sardar Gurpreet Singh\nScheduled Arrival: Today 10:30 AM - 11:30 AM\nGate: North Bay 2 (Sharbati Wheat)');">
+<div class="flex-1 flex rounded-xl border border-border-subtle bg-surface-low/50 px-3.5 py-3 focus-within:border-primary focus-within:bg-white transition-all">
+<input class="w-full bg-transparent text-sm font-medium text-on-surface placeholder:text-on-surface-subtle/70 focus:outline-none" placeholder="Enter Mobile Number or Pass Token (e.g. AGRI-1042)" type="text" value="98765-43210"/>
+</div>
+<button class="px-6 py-3 rounded-xl bg-primary text-white hover:bg-primary-dark font-bold text-sm transition-all shrink-0 cursor-pointer" type="submit">
+                Check Slot
+              </button>
+</form>
+<div class="flex items-center gap-5 text-xs text-on-surface-subtle pt-1">
+<span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-primary">done</span> SMS &amp; WhatsApp Pass</span>
+<span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-primary">done</span> Direct DBT Credit</span>
+</div>
+</div>
+</div>
+<!-- Right: Crisp, Minimalist Digital Mandi Pass (e-Parchi) -->
+<div class="lg:col-span-5 flex justify-center">
+<div class="w-full max-w-md bg-surface-card rounded-2xl border border-border-subtle shadow-sm overflow-hidden">
+<!-- Clean Header -->
+<div class="px-6 py-4 bg-primary-deep text-white flex items-center justify-between">
+<div>
+<span class="text-[11px] text-white/70 block uppercase tracking-wider font-semibold">APMC Digital Gate Pass</span>
+<span class="text-sm font-bold font-display">किसान ई-पर्ची • Kisan e-Pass</span>
+</div>
+<span class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-primary-light text-primary-deep">
+                Active Slot
+              </span>
+</div>
+<!-- Card Body -->
+<div class="p-6 space-y-5">
+<!-- Farmer Row -->
+<div class="flex items-center justify-between pb-4 border-b border-border-light">
+<div>
+<span class="text-xs text-on-surface-subtle">Farmer Name</span>
+<h3 class="text-base font-bold text-primary-deep font-display mt-0.5">Sardar Gurpreet Singh</h3>
+<span class="text-xs text-on-surface-subtle">PB-ASR-94821 • Amritsar</span>
+</div>
+<div class="text-right">
+<span class="text-[11px] text-on-surface-subtle uppercase font-semibold block">Token No.</span>
+<span class="font-mono text-sm font-bold text-primary-deep">#AGRI-1042</span>
+</div>
+</div>
+<!-- Crop & Bay Info -->
+<div class="grid grid-cols-2 gap-4 text-xs">
+<div class="p-3 rounded-xl bg-surface-low/50">
+<span class="text-on-surface-subtle block mb-1">Crop &amp; Trolley</span>
+<strong class="text-primary-deep font-semibold text-sm block">Sharbati Wheat</strong>
+<span class="text-on-surface-subtle">45 Quintals • PB-02-AX</span>
+</div>
+<div class="p-3 rounded-xl bg-surface-low/50">
+<span class="text-on-surface-subtle block mb-1">Arrival Gate</span>
+<strong class="text-primary-deep font-semibold text-sm block">North Gate (Bay 2)</strong>
+<span class="text-on-surface-subtle">Priority Lane</span>
+</div>
+</div>
+<!-- Time Slot -->
+<div class="p-4 rounded-xl bg-accent-soft border border-accent/20 flex items-center justify-between">
+<div>
+<span class="text-[11px] font-bold text-accent uppercase tracking-wider block">Arrival Window</span>
+<span class="text-base font-bold text-primary-deep font-display mt-0.5 block">Today: 10:30 AM – 11:30 AM</span>
+</div>
+<span class="material-symbols-outlined text-accent text-[26px]">schedule</span>
+</div>
+<!-- Action -->
+<div class="pt-2 flex items-center justify-between">
+<div class="text-xs text-on-surface-subtle">
+                  Valid at APMC Kota Weighbridge
+                </div>
+<button class="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary-dark transition-all text-xs font-bold flex items-center gap-1.5 cursor-pointer" onclick="alert('Pass details sent to WhatsApp (+91 98765-43210)');">
+<span class="material-symbols-outlined text-[16px]">share</span>
+<span>WhatsApp Pass</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Live Mandi Yard Operations: Light, Focused & Calm -->
+<section class="py-20 md:py-24 border-t border-border-light bg-surface-low/30" id="mandi-status">
+<div class="max-w-6xl mx-auto px-6 space-y-12">
+<!-- Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<span class="text-xs font-bold text-accent uppercase tracking-wider">Kota APMC Grain Yard</span>
+<h2 class="text-3xl font-bold text-primary-deep mt-1 font-display">Live Yard Operations</h2>
+<p class="text-sm text-secondary mt-1">Real-time gate clearance status for arriving farmers.</p>
+</div>
+<div class="text-xs text-on-surface-subtle flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span>Updated 2 minutes ago</span>
+</div>
+</div>
+<!-- 3 High-Level KPI Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="p-8 rounded-2xl bg-surface-card border border-border-subtle shadow-sm space-y-2">
+<span class="text-xs font-semibold uppercase tracking-wider text-on-surface-subtle">Average Wait Time</span>
+<div class="text-4xl font-bold text-primary-deep font-display">25 mins</div>
+<p class="text-xs text-on-surface-subtle">Gate entry to completed tare weighment</p>
+</div>
+<div class="p-8 rounded-2xl bg-surface-card border border-border-subtle shadow-sm space-y-2">
+<span class="text-xs font-semibold uppercase tracking-wider text-on-surface-subtle">Daily Procurement</span>
+<div class="text-4xl font-bold text-primary-deep font-display">1,420 Qtl</div>
+<p class="text-xs text-on-surface-subtle">Wheat &amp; Chana processed today</p>
+</div>
+<div class="p-8 rounded-2xl bg-surface-card border border-border-subtle shadow-sm space-y-2">
+<span class="text-xs font-semibold uppercase tracking-wider text-on-surface-subtle">Weighbridge Status</span>
+<div class="text-4xl font-bold text-primary font-display">All 3 Smooth</div>
+<p class="text-xs text-on-surface-subtle">Zero highway backup reported</p>
+</div>
+</div>
+<!-- Sleek Row of 3 Bay Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="p-6 rounded-2xl bg-surface-card border border-border-light space-y-3">
+<div class="flex items-center justify-between">
+<span class="text-xs font-bold text-on-surface-subtle uppercase tracking-wider">Bay 1 • Weighment</span>
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+</div>
+<h3 class="text-base font-bold text-primary-deep font-display">Gross Laden Scale</h3>
+<p class="text-xs text-secondary leading-relaxed">Handling Trolley PB-10 • Turnaround under 8 mins remaining.</p>
+</div>
+<div class="p-6 rounded-2xl bg-surface-card border border-border-light space-y-3">
+<div class="flex items-center justify-between">
+<span class="text-xs font-bold text-on-surface-subtle uppercase tracking-wider">Bay 2 • Inspection</span>
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+</div>
+<h3 class="text-base font-bold text-primary-deep font-display">Assay &amp; Moisture Lab</h3>
+<p class="text-xs text-secondary leading-relaxed">Sample testing running at 11.6% average moisture norm.</p>
+</div>
+<div class="p-6 rounded-2xl bg-surface-card border border-border-light space-y-3">
+<div class="flex items-center justify-between">
+<span class="text-xs font-bold text-on-surface-subtle uppercase tracking-wider">Bay 3 • Clearance</span>
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+</div>
+<h3 class="text-base font-bold text-primary-deep font-display">Tare &amp; DBT Payment</h3>
+<p class="text-xs text-secondary leading-relaxed">Direct Aadhaar MSP settlement triggered upon exit.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- How It Works: 3-Step Farmer Flow -->
+<section class="py-20 md:py-28 px-6" id="how-it-works">
+<div class="max-w-6xl mx-auto space-y-16">
+<div class="max-w-xl">
+<span class="text-xs font-bold text-accent uppercase tracking-wider">Simple &amp; App-Free</span>
+<h2 class="text-3xl sm:text-4xl font-bold text-primary-deep mt-1 font-display">How AgriQueue Works</h2>
+<p class="text-base text-secondary mt-2">No complicated apps. Simple interactions in your mother tongue.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Step 1 -->
+<div class="p-8 rounded-2xl bg-surface-card border border-border-subtle shadow-sm flex flex-col space-y-4">
+<div class="w-10 h-10 rounded-full bg-surface-low text-primary-deep font-bold text-sm flex items-center justify-center font-mono">
+              01
+            </div>
+<h3 class="text-lg font-bold text-primary-deep font-display">Send Voice Note or Call</h3>
+<p class="text-sm text-secondary leading-relaxed">
+              Send a 10-second WhatsApp audio message in your dialect or make a missed call stating your crop volume.
+            </p>
+</div>
+<!-- Step 2 -->
+<div class="p-8 rounded-2xl bg-surface-card border border-border-subtle shadow-sm flex flex-col space-y-4">
+<div class="w-10 h-10 rounded-full bg-surface-low text-primary-deep font-bold text-sm flex items-center justify-center font-mono">
+              02
+            </div>
+<h3 class="text-lg font-bold text-primary-deep font-display">Receive Your Paced Slot</h3>
+<p class="text-sm text-secondary leading-relaxed">
+              Get an exact 1-hour gate arrival window on WhatsApp. Wait comfortably at home instead of highway lines.
+            </p>
+</div>
+<!-- Step 3 -->
+<div class="p-8 rounded-2xl bg-surface-card border border-border-subtle shadow-sm flex flex-col space-y-4">
+<div class="w-10 h-10 rounded-full bg-surface-low text-primary-deep font-bold text-sm flex items-center justify-center font-mono">
+              03
+            </div>
+<h3 class="text-lg font-bold text-primary-deep font-display">15-Min Weighment &amp; DBT</h3>
+<p class="text-sm text-secondary leading-relaxed">
+              Arrive at North Bay, get weighed in 15 minutes, and funds transfer straight to your Aadhaar-linked bank account.
+            </p>
+</div>
+</div>
+</div>
+</section>
+<!-- Impact Comparison Table: Streamlined & Breathable -->
+<section class="py-20 md:py-24 border-t border-border-light bg-surface-low/30" id="impact">
+<div class="max-w-5xl mx-auto px-6 space-y-10">
+<div>
+<span class="text-xs font-bold text-accent uppercase tracking-wider">Field Benchmark</span>
+<h2 class="text-3xl font-bold text-primary-deep mt-1 font-display">Traditional Mandi vs. AgriQueue</h2>
+<p class="text-sm text-secondary mt-1">Measured improvements across peak rabi harvest season.</p>
+</div>
+<div class="rounded-2xl bg-surface-card border border-border-subtle shadow-sm overflow-hidden">
+<table class="w-full text-left border-collapse text-sm">
+<thead>
+<tr class="border-b border-border-light text-xs font-bold uppercase tracking-wider text-on-surface-subtle bg-surface-low/50">
+<th class="py-4 px-6">Parameters</th>
+<th class="py-4 px-6 text-on-surface-subtle">Traditional System</th>
+<th class="py-4 px-6 text-primary-deep bg-primary-light/40">AgriQueue AI</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-light">
+<tr class="hover:bg-surface-low/30 transition-colors">
+<td class="py-5 px-6 font-semibold text-primary-deep">Arrival Wait Time</td>
+<td class="py-5 px-6 text-secondary">36 to 48 Hours in roadside queues</td>
+<td class="py-5 px-6 font-bold text-primary bg-primary-light/20">Under 45 Minutes guaranteed</td>
+</tr>
+<tr class="hover:bg-surface-low/30 transition-colors">
+<td class="py-5 px-6 font-semibold text-primary-deep">Diesel &amp; Idling Cost</td>
+<td class="py-5 px-6 text-secondary">₹1,500 – ₹2,200 wasted diesel</td>
+<td class="py-5 px-6 font-bold text-primary bg-primary-light/20">₹0 Wasted Diesel</td>
+</tr>
+<tr class="hover:bg-surface-low/30 transition-colors">
+<td class="py-5 px-6 font-semibold text-primary-deep">Farmer Comfort</td>
+<td class="py-5 px-6 text-secondary">Sleeping under trolleys in heat/rain</td>
+<td class="py-5 px-6 font-bold text-primary bg-primary-light/20">Rest at home until departure</td>
+</tr>
+<tr class="hover:bg-surface-low/30 transition-colors">
+<td class="py-5 px-6 font-semibold text-primary-deep">Weighment &amp; DBT Speed</td>
+<td class="py-5 px-6 text-secondary">Manual slips, delays up to 14 days</td>
+<td class="py-5 px-6 font-bold text-primary bg-primary-light/20">Instant digital assay &amp; direct DBT</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<!-- Dignified APMC Callout: Calm & Roomy -->
+<section class="py-20 md:py-28 px-6" id="officers">
+<div class="max-w-5xl mx-auto rounded-3xl bg-primary-deep text-white p-10 md:p-14 flex flex-col md:flex-row items-center justify-between gap-10">
+<div class="space-y-3 max-w-xl">
+<span class="text-xs font-bold uppercase tracking-wider text-white/70">For Mandi Secretaries &amp; APMC Boards</span>
+<h2 class="text-2xl sm:text-3xl font-bold font-display">Bring Smart Pacing to Your Mandi Yard</h2>
+<p class="text-sm text-white/80 leading-relaxed">
+            Zero hardware required. Connects directly to existing weighbridge scales in under 48 hours to eliminate yard congestion.
+          </p>
+</div>
+<div class="flex flex-col sm:flex-row gap-3 shrink-0 w-full md:w-auto">
+<button class="px-6 py-3.5 rounded-xl bg-accent hover:bg-accent/90 text-white font-bold text-sm transition-all text-center" onclick="alert('Setup request submitted. An APMC onboarding officer will contact you within 24 hours.');">
+            Request Mandi Setup
+          </button>
+<button class="px-6 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all text-center" onclick="alert('Calling Kisan &amp; APMC Helpdesk: 1800-180-1551');">
+            Call Agri Desk
+          </button>
+</div>
+</div>
+</section>
+</main>
+<!-- Clean, Spacious Footer -->
+<footer class="border-t border-border-light bg-surface-card py-16 px-6 text-sm">
+<div class="max-w-6xl mx-auto space-y-12">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-10">
+<div class="space-y-3 md:col-span-1">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-[16px]">eco</span>
+</div>
+<span class="font-bold text-primary-deep font-display text-base">AgriQueue AI</span>
+</div>
+<p class="text-xs text-on-surface-subtle leading-relaxed">
+            Queue-free mandi arrivals and transparent MSP settlement for Indian farmers.
+          </p>
+</div>
+<div class="space-y-3">
+<h4 class="text-xs font-bold uppercase tracking-wider text-primary-deep">Farmer Services</h4>
+<ul class="space-y-2 text-xs text-on-surface-subtle">
+<li><a class="hover:text-primary transition-colors" href="#">Check e-Parchi Status</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">WhatsApp Voice Booking</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Today's MSP Rates</a></li>
+</ul>
+</div>
+<div class="space-y-3">
+<h4 class="text-xs font-bold uppercase tracking-wider text-primary-deep">Mandi Committees</h4>
+<ul class="space-y-2 text-xs text-on-surface-subtle">
+<li><a class="hover:text-primary transition-colors" href="#">Secretary Login</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Scale Integration</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">e-NAM Portal Sync</a></li>
+</ul>
+</div>
+<div class="space-y-3">
+<h4 class="text-xs font-bold uppercase tracking-wider text-primary-deep">Helpline Support</h4>
+<p class="text-xs text-on-surface-subtle">Kisan Call Centre (24x7 Toll-Free)</p>
+<p class="text-base font-bold font-mono text-primary-deep">1800-180-1551</p>
+</div>
+</div>
+<div class="pt-8 border-t border-border-light flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-on-surface-subtle">
+<span>© 2025 Directorate of Agricultural Marketing &amp; AgriQueue AI</span>
+<div class="flex gap-6">
+<a class="hover:text-primary transition-colors" href="#">Privacy</a>
+<a class="hover:text-primary transition-colors" href="#">Citizen Charter</a>
+<a class="hover:text-primary transition-colors" href="#">e-NAM Portal</a>
+</div>
+</div>
+</div>
+</footer>
+</body></html>

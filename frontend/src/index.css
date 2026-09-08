@@ -1,0 +1,203 @@
+@charset "UTF-8";
+
+:root {
+  --surface: #faf7f2;
+  --background: #faf7f2;
+  --surface-low: #f4efe6;
+  --surface-card: #ffffff;
+  
+  --primary: #4a7c59;
+  --primary-dark: #365c41;
+  --primary-deep: #1f3b28;
+  --primary-light: #eaf3ec;
+
+  --secondary: #636d65;
+  --on-surface: #232b25;
+  --on-surface-subtle: #667067;
+
+  --accent: #b8702c;
+  --accent-soft: #fbf4eb;
+
+  --border-subtle: #e6e0d4;
+  --border-light: #ede8de;
+
+  --radius-sm: 0.5rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+
+  --font-headline: 'Literata', Georgia, serif;
+  --font-display: 'Literata', Georgia, serif;
+  --font-body: 'Nunito Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--surface);
+  color: var(--on-surface);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-display);
+}
+
+.mono, code {
+  font-family: var(--font-mono);
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  display: inline-block;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  vertical-align: middle;
+}
+
+/* Terra Elevation & Cards */
+.terra-card {
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 4px 20px rgba(46, 50, 48, 0.05);
+  transition: all 0.2s ease;
+}
+
+.terra-card:hover {
+  box-shadow: 0 8px 30px rgba(46, 50, 48, 0.08);
+}
+
+/* Terra Button styles */
+.terra-btn-primary {
+  background-color: var(--primary);
+  color: #ffffff;
+  padding: 0.65rem 1.4rem;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 0.88rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.terra-btn-primary:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.terra-btn-secondary {
+  background-color: var(--surface-low);
+  color: var(--primary-deep);
+  border: 1px solid var(--border-subtle);
+  padding: 0.65rem 1.2rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.terra-btn-secondary:hover {
+  background-color: #ffffff;
+  border-color: var(--primary);
+}
+
+.terra-btn-accent {
+  background-color: var(--accent);
+  color: #ffffff;
+  padding: 0.65rem 1.4rem;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 0.88rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.terra-btn-accent:hover {
+  background-color: #9c5c20;
+}
+
+/* Custom Scrollbar for Terra */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: var(--surface-low);
+}
+::-webkit-scrollbar-thumb {
+  background: #c8c2b5;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Google Translate Clean Styling Overrides */
+.goog-te-banner-frame.skiptranslate,
+.goog-te-banner-frame {
+  display: none !important;
+}
+
+body {
+  top: 0px !important;
+  position: static !important;
+}
+
+#goog-gt-tt, .goog-te-balloon-frame {
+  display: none !important;
+}
+
+.goog-text-highlight {
+  background: none !important;
+  box-shadow: none !important;
+}
+
+.goog-te-gadget {
+  font-family: inherit !important;
+  color: transparent !important;
+  font-size: 0px !important;
+}
+
+.goog-te-gadget .goog-te-combo {
+  background-color: var(--surface-card) !important;
+  color: var(--primary-deep) !important;
+  border: 1px solid var(--border-subtle) !important;
+  padding: 5px 8px !important;
+  border-radius: 8px !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  outline: none !important;
+  cursor: pointer !important;
+}
