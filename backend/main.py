@@ -6,8 +6,10 @@ import pyotp
 import hashlib
 from typing import Dict, Any, Optional, List
 import requests
+import json
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends, Form, HTTPException, Response, Request, Header
+from fastapi import FastAPI, Depends, Form, HTTPException, Response, Request, Header, Query
+from fastapi.responses import PlainTextResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import create_engine
@@ -16,11 +18,12 @@ from sqlalchemy.orm import sessionmaker, Session
 # Load environment variables
 load_dotenv()
 
-from models import Base, Mandi, Weighbridge, Farmer, SlotBooking, DisruptionIncident, NotificationLog, Arhtiya
+from models import Base, Mandi, Weighbridge, Farmer, SlotBooking, DisruptionIncident, NotificationLog, Arhtiya, ConversationState
 from intent_parser import parse_farmer_intent
 from slot_allocator import allocate_slot, verify_totp_token
 from disruption_engine import trigger_disruption, resolve_incident, promote_standby_on_noshow
 from mandi_data_service import get_market_intelligence
+from whatsapp_client import send_reply, send_proactive_alert, WHATSAPP_VERIFY_TOKEN
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./mandiflow.db")
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
@@ -200,6 +203,61 @@ def transcribe_whatsapp_audio(media_url: str) -> Optional[str]:
 
     return None
 
+def transcribe_meta_audio(media_id: str, access_token: Optional[str] = None) -> Optional[str]:
+    """
+    Downloads audio from Meta WhatsApp Cloud API via 2-step media endpoint:
+    1) GET media URL from graph.facebook.com/{version}/{media_id} with Bearer token
+    2) GET binary bytes from returned URL
+    3) Transcribe with Groq Whisper API
+    """
+    token = access_token or os.getenv("WHATSAPP_ACCESS_TOKEN")
+    groq_key = os.getenv("GROQ_API_KEY")
+    version = os.getenv("WHATSAPP_API_VERSION", "v20.0")
+
+    if not token or not media_id:
+        return None
+
+    try:
+        headers = {"Authorization": f"Bearer {token}"}
+        meta_res = requests.get(f"https://graph.facebook.com/{version}/{media_id}", headers=headers, timeout=15)
+        if meta_res.status_code != 200:
+            print(f"Meta media lookup failed: {meta_res.status_code} {meta_res.text}")
+            return None
+        media_url = meta_res.json().get("url")
+        if not media_url:
+            return None
+
+        audio_res = requests.get(media_url, headers=headers, timeout=15)
+        if audio_res.status_code != 200:
+            print(f"Meta audio download failed: {audio_res.status_code}")
+            return None
+
+        audio_bytes = audio_res.content
+        if not audio_bytes or len(audio_bytes) < 100:
+            return None
+
+        if groq_key:
+            whisper_url = "https://api.groq.com/openai/v1/audio/transcriptions"
+            w_headers = {"Authorization": f"Bearer {groq_key}"}
+            files = {
+                "file": ("voice_note.ogg", audio_bytes, "audio/ogg")
+            }
+            data = {
+                "model": "whisper-large-v3-turbo",
+                "temperature": 0.0,
+                "response_format": "json"
+            }
+            tr_res = requests.post(whisper_url, headers=w_headers, files=files, data=data, timeout=15)
+            if tr_res.status_code == 200:
+                transcript = tr_res.json().get("text", "").strip()
+                if transcript:
+                    return transcript
+    except Exception as e:
+        print(f"Meta audio transcription error: {e}")
+        return None
+
+    return None
+
 # ==================== ENDPOINTS ====================
 
 @app.get("/health")
@@ -328,28 +386,150 @@ def get_dashboard_data(mandi_code: Optional[str] = "KARNAL-01", db: Session = De
         ]
     }
 
+@app.get("/webhook/whatsapp")
+async def verify_whatsapp_webhook(
+    hub_mode: Optional[str] = Query(None, alias="hub.mode"),
+    hub_verify_token: Optional[str] = Query(None, alias="hub.verify_token"),
+    hub_challenge: Optional[str] = Query(None, alias="hub.challenge"),
+):
+    """
+    Meta WhatsApp Cloud API verification handshake.
+    When registered in Meta App Dashboard, Meta sends hub.mode='subscribe' and hub.verify_token.
+    If valid, returns plain text hub.challenge.
+    """
+    expected_token = os.getenv("WHATSAPP_VERIFY_TOKEN", WHATSAPP_VERIFY_TOKEN)
+    if hub_mode == "subscribe" and hub_verify_token == expected_token:
+        return PlainTextResponse(hub_challenge or "")
+    return PlainTextResponse("verification failed", status_code=403)
+
 @app.post("/webhook/whatsapp")
-async def twilio_whatsapp_webhook(
-    From: str = Form(None),
-    Body: str = Form(None),
-    MediaUrl0: str = Form(None),
-    MediaContentType0: str = Form(None),
+async def whatsapp_webhook(
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
-    Twilio WhatsApp Webhook:
-    Processes farmer incoming WhatsApp voice note or text.
-    Uses real Whisper transcription for audio; if transcription fails, asks farmer to resend as text.
+    Unified WhatsApp Webhook:
+    1) Supports Meta WhatsApp Cloud API (JSON payload) with 2-step confirmation loop.
+    2) Supports Twilio WhatsApp (Form payload) for fallback testing.
     """
-    caller_phone = From or "+919812345678"
-    incoming_text = Body or ""
+    content_type = request.headers.get("content-type", "")
 
-    # Priority 1, Item 2: Real Whisper audio transcription
-    is_audio = MediaUrl0 and ("audio" in (MediaContentType0 or "") or "ogg" in (MediaContentType0 or "") or "mp4" in (MediaContentType0 or ""))
+    # ==================== 1. META WHATSAPP CLOUD API ====================
+    if "application/json" in content_type:
+        payload = await request.json()
+        for entry in payload.get("entry", []):
+            for change in entry.get("changes", []):
+                value = change.get("value", {})
+                for message in value.get("messages", []):
+                    phone = message.get("from")
+                    if not phone:
+                        continue
+
+                    # Normalize phone (e.g. +91...)
+                    norm_phone = "+" + phone if not phone.startswith("+") else phone
+
+                    # Fetch conversation state
+                    state = db.query(ConversationState).filter(ConversationState.phone == norm_phone).first()
+                    if not state:
+                        state = ConversationState(phone=norm_phone, state="idle")
+                        db.add(state)
+                        db.commit()
+                        db.refresh(state)
+
+                    state.updated_at = datetime.datetime.utcnow()
+
+                    msg_type = message.get("type")
+                    body_text = ""
+                    if msg_type == "text":
+                        body_text = message.get("text", {}).get("body", "")
+                    elif msg_type == "audio":
+                        media_id = message.get("audio", {}).get("id")
+                        body_text = transcribe_meta_audio(media_id) or ""
+                        if not body_text.strip():
+                            send_reply(
+                                phone,
+                                "⚠️ *Namaste Kisan Bandhu!*\n\n"
+                                "Aapka voice note spashth nahi tha. Kripya punah koshish karein ya text likhein:\n"
+                                "👉 _'40 quintal gehu Rampur se kal tractor se'_"
+                            )
+                            db.commit()
+                            continue
+
+                    body_clean = body_text.strip()
+
+                    # Confirmation branch: Farmer confirms prompt
+                    if state.state == "awaiting_confirmation" and state.pending_intent_json:
+                        reply_lower = body_clean.lower()
+                        if reply_lower in ("1", "yes", "confirm", "correct", "haan", "ha", "thik", "theek", "ok", "book"):
+                            try:
+                                intent_data = json.loads(state.pending_intent_json)
+                                booking = allocate_slot(db, mandi_code="KARNAL-01", parsed_intent=intent_data, lane_type="EXPRESS")
+
+                                reply_msg = (
+                                    f"🌾 *MandiFlow Digital Pass* 🌾\n"
+                                    f"Namaste {booking.farmer_name} ji,\n\n"
+                                    f"Aapka Mandi Slot nishchit ho gaya hai:\n"
+                                    f"🎟️ *Token Number:* {booking.token_number}\n"
+                                    f"📍 *Weighbridge:* Bay {booking.bay_assigned}\n"
+                                    f"⏰ *Arrival Window:* {booking.scheduled_window_start} - {booking.scheduled_window_end}\n"
+                                    f"📦 *Crop/Qty:* {booking.crop} - {booking.quantity_quintals} Quintals\n"
+                                    f"🚜 *Vahan:* {booking.vehicle_type}\n\n"
+                                    f"🔒 *Slot-Bound Price Lock:* ₹{booking.price_lock_rate}/qtl\n"
+                                    f"🛡️ *Digital Seal:* {booking.price_lock_hash}\n"
+                                    f"(Aapka MSP bhav booking samay par surakshit kar liya gaya hai. Mandi me delay hone par bhi rate kam nahi hoga.)\n\n"
+                                    f"👉 Kripya arrival samay se 10 minute pehle gate par Token dikhayein."
+                                )
+                                send_reply(phone, reply_msg)
+                            except ValueError as e:
+                                send_reply(
+                                    phone,
+                                    f"⚠️ *MandiFlow Booking Alert*\n\n{str(e)}\n\n"
+                                    f"Aapka pehle se ek token active hai. Gate par pichla token dikhayein."
+                                )
+                            finally:
+                                state.state = "idle"
+                                state.pending_intent_json = None
+                                db.commit()
+                            continue
+                        # If user sent another text/audio instead of 1, re-parse as fresh/corrected request
+
+                    if not body_clean:
+                        send_reply(
+                            phone,
+                            "Namaste Kisan Bandhu! Mandi me slot book karne ke liye apna sandesh ya voice note bhejein.\n"
+                            "Udaharan: '40 quintal gehu kal tractor se'"
+                        )
+                        db.commit()
+                        continue
+
+                    # Parse Intent via Groq LLM / fallback
+                    intent = parse_farmer_intent(body_clean, caller_phone=norm_phone)
+                    state.state = "awaiting_confirmation"
+                    state.pending_intent_json = json.dumps(intent)
+                    db.commit()
+
+                    vehicle_part = f" via {intent.get('vehicle_type')}" if intent.get("vehicle_type") else ""
+                    prompt = (
+                        f"Did we get this right?\n"
+                        f"{intent.get('quantity_quintals', 40)} quintals of {intent.get('crop', 'Wheat')}{vehicle_part}, "
+                        f"arriving {intent.get('arrival_date', 'today')}.\n\n"
+                        f'Reply "1" to confirm, or send a new voice note / message to correct it.'
+                    )
+                    send_reply(phone, prompt)
+
+        return JSONResponse({"status": "ok"})
+
+    # ==================== 2. TWILIO FORM FALLBACK ====================
+    form_data = await request.form()
+    caller_phone = form_data.get("From") or "+919812345678"
+    incoming_text = form_data.get("Body") or ""
+    media_url = form_data.get("MediaUrl0")
+    media_content_type = form_data.get("MediaContentType0")
+
+    is_audio = media_url and ("audio" in (media_content_type or "") or "ogg" in (media_content_type or "") or "mp4" in (media_content_type or ""))
     if is_audio:
-        transcribed = transcribe_whatsapp_audio(MediaUrl0)
+        transcribed = transcribe_whatsapp_audio(media_url)
         if not transcribed:
-            # Do NOT substitute canned text! Politely inform the farmer to send text message.
             fail_msg = (
                 "⚠️ *Namaste Kisan Bandhu!*\n\n"
                 "Aapka voice message process nahi ho saka (audio spashth nahi tha ya connection truti hui).\n\n"
@@ -371,7 +551,6 @@ async def twilio_whatsapp_webhook(
     try:
         booking = allocate_slot(db, mandi_code="KARNAL-01", parsed_intent=intent, lane_type="EXPRESS")
     except ValueError as e:
-        # Priority 2, Item 7: Inform farmer of duplicate active booking
         conflict_msg = (
             f"⚠️ *MandiFlow Booking Alert*\n\n"
             f"{str(e)}\n\n"
@@ -403,6 +582,68 @@ async def twilio_whatsapp_webhook(
     <Message>{reply}</Message>
 </Response>"""
     return Response(content=twiml, media_type="application/xml")
+
+# ==================== ADMIN / DEMO SCRIPT COMPATIBILITY ALIASES ====================
+@app.post("/admin/incident")
+async def admin_incident_alias(request: Request, db: Session = Depends(get_db)):
+    """
+    Teammate demo compatibility alias:
+    Accepts form-data or JSON (reason, delay_minutes, from_hour or bay_id)
+    and executes trigger_disruption, returning incident metrics.
+    """
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        body = await request.json()
+    else:
+        body = dict(await request.form())
+
+    reason = body.get("reason", "Weighbridge Bay breakdown")
+    delay_minutes = int(body.get("delay_minutes", 45))
+    bay_id = int(body.get("bay_id", 1)) if "bay_id" in body else 1
+
+    mandi = db.query(Mandi).first()
+    mandi_id = mandi.id if mandi else 1
+
+    result = trigger_disruption(
+        db=db,
+        mandi_id=mandi_id,
+        incident_type="WEIGHBRIDGE_BREAKDOWN",
+        bay_id=bay_id,
+        delay_minutes=delay_minutes,
+        description=reason
+    )
+    return JSONResponse(result)
+
+@app.get("/admin/capacity")
+def admin_capacity(db: Session = Depends(get_db)):
+    mandi = db.query(Mandi).first()
+    return {
+        "mandi_id": mandi.id if mandi else 1,
+        "capacity_per_hour": (mandi.hourly_capacity_per_bay * mandi.weighbridge_count) if mandi else 8,
+        "bays": mandi.weighbridge_count if mandi else 2
+    }
+
+@app.get("/admin/bookings")
+def admin_bookings(for_date: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(SlotBooking)
+    if for_date:
+        query = query.filter(SlotBooking.scheduled_date == for_date)
+    bookings = query.order_by(SlotBooking.scheduled_date.asc(), SlotBooking.scheduled_window_start.asc()).all()
+
+    return [
+        {
+            "token": b.token_number,
+            "phone": b.farmer_phone,
+            "crop": b.crop,
+            "quantity_quintals": b.quantity_quintals,
+            "date": b.scheduled_date,
+            "hour": b.scheduled_window_start,
+            "delay_minutes": b.delay_offset_minutes,
+            "status": b.status,
+            "bay": b.bay_assigned,
+        }
+        for b in bookings
+    ]
 
 @app.post("/api/voice-booking")
 def simulate_voice_or_chat_booking(payload: VoiceBookingRequest, db: Session = Depends(get_db)):

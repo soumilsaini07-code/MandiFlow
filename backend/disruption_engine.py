@@ -2,6 +2,10 @@ import datetime
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from models import DisruptionIncident, SlotBooking, Weighbridge, NotificationLog, Mandi
+try:
+    from whatsapp_client import send_proactive_alert
+except ImportError:
+    send_proactive_alert = None
 
 def format_time_offset(original_hhmm: str, delay_minutes: int) -> str:
     """Takes '09:00' and adds 45 minutes -> '09:45'"""
@@ -98,6 +102,8 @@ def trigger_disruption(
             status="DELIVERED"
         )
         db.add(notif)
+        if send_proactive_alert:
+            send_proactive_alert(booking.farmer_phone, msg)
         alerts_sent.append({
             "token": booking.token_number,
             "farmer": booking.farmer_name,

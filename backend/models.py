@@ -160,3 +160,12 @@ class NotificationLog(Base):
     message_body = Column(Text, nullable=False)
     status = Column(String(32), default="SENT")
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class ConversationState(Base):
+    __tablename__ = "conversation_states"
+
+    phone = Column(String(32), primary_key=True, index=True)
+    state = Column(String(32), default="idle")  # idle, awaiting_confirmation
+    pending_intent_json = Column(Text, nullable=True)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
