@@ -45,17 +45,33 @@ class IntentParseError(Exception):
     pass
 
 
-def transcribe_voice_note(media_url: str, auth: tuple[str, str]) -> str:
+def transcribe_voice_note(media_id: str, access_token: str) -> str:
     """
-    Downloads the Twilio media URL (needs Basic Auth — see README "Known
-    limits") and transcribes it with Groq's Whisper endpoint.
+    Meta's Cloud API doesn't hand you a media URL directly in the webhook
+    payload — you get a `media_id`, then have to do a two-step fetch:
+    1) GET the media's metadata (including a short-lived `url`) with a
+       Bearer token, 2) GET that URL, also with a Bearer token, for the
+       actual binary bytes. (Twilio's single-step `MediaUrl0` was simpler,
+       but this is what the free Meta tier requires — see README "Known
+       limits".)
     """
     if _client is None:
         raise IntentParseError("GROQ_API_KEY is not set — cannot transcribe audio.")
 
     import httpx
 
-    resp = httpx.get(media_url, auth=auth, timeout=15.0)
+    from app.config import WHATSAPP_API_VERSION
+
+    headers = {"Authorization": f"Bearer {access_token}"}
+    meta_resp = httpx.get(
+        f"https://graph.facebook.com/{WHATSAPP_API_VERSION}/{media_id}/",
+        headers=headers,
+        timeout=15.0,
+    )
+    meta_resp.raise_for_status()
+    media_url = meta_resp.json()["url"]
+
+    resp = httpx.get(media_url, headers=headers, timeout=15.0)
     resp.raise_for_status()
 
     transcript = _client.audio.transcriptions.create(

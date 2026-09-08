@@ -9,7 +9,7 @@ from datetime import date
 from sqlmodel import Session, select
 
 from app.models import Booking, Incident
-from app.twilio_client import send_proactive_alert
+from app.whatsapp_client import send_proactive_alert
 
 
 def apply_incident(
