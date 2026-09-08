@@ -45,14 +45,41 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleSearchToken = (tokenOrPhone) => {
-    if (!dashboardData || !dashboardData.express_slots) return null;
-    const clean = tokenOrPhone.trim().toLowerCase();
-    const found = dashboardData.express_slots.find(
-      (s) => s.token_number.toLowerCase().includes(clean) ||
-             (s.phone && s.phone.includes(clean)) ||
+  const handleSearchToken = async (tokenOrPhone) => {
+    if (!tokenOrPhone) return null;
+    const clean = tokenOrPhone.trim().toLowerCase().replace(/^#/, '');
+
+    // 1. Search in-memory Express slots & Standby queue
+    const allSlots = [
+      ...(dashboardData?.express_slots || []),
+      ...(dashboardData?.standby_queue || [])
+    ];
+    let found = allSlots.find(
+      (s) => s.token_number?.toLowerCase().includes(clean) ||
+             (s.phone && s.phone.replace(/\D/g, '').includes(clean.replace(/\D/g, ''))) ||
              (s.farmer_name && s.farmer_name.toLowerCase().includes(clean))
     );
+
+    // 2. Search cross-prefix (MS- vs MF-)
+    if (!found) {
+      const alt = clean.startsWith('ms-') ? clean.replace('ms-', 'mf-') : (clean.startsWith('mf-') ? clean.replace('mf-', 'ms-') : null);
+      if (alt) {
+        found = allSlots.find((s) => s.token_number?.toLowerCase().includes(alt));
+      }
+    }
+
+    // 3. Live backend API lookup fallback
+    if (!found) {
+      try {
+        const res = await fetch(`http://localhost:8000/api/token/${encodeURIComponent(clean)}`);
+        if (res.ok) {
+          found = await res.json();
+        }
+      } catch (err) {
+        console.warn("Backend token lookup error:", err);
+      }
+    }
+
     if (found) {
       setCurrentSelectedPass(found);
       return found;

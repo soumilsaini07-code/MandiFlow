@@ -282,7 +282,7 @@ def get_dashboard_data(mandi_code: Optional[str] = "KARNAL-01", db: Session = De
     bays = db.query(Weighbridge).filter(Weighbridge.mandi_id == mandi.id).all()
     all_bookings = db.query(SlotBooking).filter(
         SlotBooking.mandi_id == mandi.id,
-        SlotBooking.scheduled_date == today_str
+        (SlotBooking.scheduled_date == today_str) | (SlotBooking.status.in_(["SCHEDULED", "GATE_ENTRY", "QUALITY_ASSAY", "WEIGHED"]))
     ).order_by(SlotBooking.scheduled_window_start.asc()).all()
 
     incidents = db.query(DisruptionIncident).filter(
@@ -789,9 +789,45 @@ def advance_lifecycle_endpoint(payload: StatusAdvanceRequest, db: Session = Depe
 @app.get("/api/token/{token_number}")
 def get_token_details(token_number: str, db: Session = Depends(get_db)):
     """Farmer dynamic pass view with real-time TOTP generation (open to farmers)"""
-    booking = db.query(SlotBooking).filter(SlotBooking.token_number == token_number).first()
+    clean = token_number.strip().lstrip("#")
+    
+    # 1. Exact match (case-insensitive)
+    booking = db.query(SlotBooking).filter(
+        (SlotBooking.token_number == clean) |
+        (SlotBooking.token_number.ilike(clean))
+    ).first()
+
+    # 2. Interchanged prefix match (MS- vs MF-)
     if not booking:
-        raise HTTPException(status_code=404, detail="Token not found")
+        alt_clean = clean.replace("MS-", "MF-") if clean.upper().startswith("MS-") else (clean.replace("MF-", "MS-") if clean.upper().startswith("MF-") else None)
+        if alt_clean:
+            booking = db.query(SlotBooking).filter(
+                (SlotBooking.token_number == alt_clean) |
+                (SlotBooking.token_number.ilike(alt_clean))
+            ).first()
+
+    # 3. Suffix / Substring match (e.g. "A5BA" or "105")
+    if not booking:
+        booking = db.query(SlotBooking).filter(
+            SlotBooking.token_number.ilike(f"%{clean}%")
+        ).first()
+
+    # 4. Phone number match (e.g. "8360421794" or "+918360421794")
+    if not booking:
+        clean_digits = "".join(ch for ch in clean if ch.isdigit())
+        if len(clean_digits) >= 6:
+            booking = db.query(SlotBooking).filter(
+                SlotBooking.farmer_phone.contains(clean_digits[-10:])
+            ).first()
+
+    # 5. Farmer name match
+    if not booking:
+        booking = db.query(SlotBooking).filter(
+            SlotBooking.farmer_name.ilike(f"%{clean}%")
+        ).first()
+
+    if not booking:
+        raise HTTPException(status_code=404, detail=f"Token '{token_number}' not found in Mandi registry")
 
     # Generate current dynamic TOTP (changes every 60s)
     totp = pyotp.TOTP(booking.totp_secret, interval=60)

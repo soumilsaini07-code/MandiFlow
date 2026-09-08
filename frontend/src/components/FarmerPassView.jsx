@@ -98,13 +98,14 @@ export default function FarmerPassView({ selectedToken, allTokens = [] }) {
       <div style={{
         display: 'flex',
         alignItems: 'center',
+        flexWrap: 'wrap',
         gap: '12px',
         background: 'rgba(255, 255, 255, 0.05)',
         padding: '8px 16px',
         borderRadius: 'var(--radius-md)',
         border: '1px solid var(--border-subtle)'
       }}>
-        <span style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>Simulate Farmer Mobile:</span>
+        <span style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>Select or Enter Token / Mobile:</span>
         <select
           value={currentToken}
           onChange={(e) => setCurrentToken(e.target.value)}
@@ -125,6 +126,32 @@ export default function FarmerPassView({ selectedToken, allTokens = [] }) {
             </option>
           ))}
         </select>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <input
+            type="text"
+            placeholder="Type Token (e.g. A5BA or MS-0908...)"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.target.value.trim()) {
+                setCurrentToken(e.target.value.trim());
+              }
+            }}
+            onBlur={(e) => {
+              if (e.target.value.trim()) {
+                setCurrentToken(e.target.value.trim());
+              }
+            }}
+            style={{
+              background: 'var(--bg-dark)',
+              color: '#ffffff',
+              border: '1px solid var(--border-subtle)',
+              padding: '6px 10px',
+              borderRadius: '6px',
+              fontSize: '0.82rem',
+              fontFamily: 'monospace',
+              width: '180px'
+            }}
+          />
+        </div>
         <button onClick={fetchTokenDetails} className="btn btn-secondary" style={{ padding: '6px 10px', fontSize: '0.78rem' }}>
           <RefreshCw size={13} /> Refresh
         </button>

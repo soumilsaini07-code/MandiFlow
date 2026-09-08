@@ -9,14 +9,15 @@ export default function StitchHero({
   const [searchInput, setSearchInput] = useState("");
   const [feedback, setFeedback] = useState("");
 
-  const handleSearchSubmit = (e) => {
+  const handleSearchSubmit = async (e) => {
     e.preventDefault();
     if (!searchInput.trim()) return;
-    const found = onSearchToken(searchInput.trim());
+    setFeedback(`Searching for "${searchInput.trim()}" in live Mandi registry...`);
+    const found = await onSearchToken(searchInput.trim());
     if (found) {
-      setFeedback(`Verified: Token ${found.token_number} (${found.farmer_name}) loaded!`);
+      setFeedback(`Verified: Token ${found.token_number} (${found.farmer_name}) loaded successfully!`);
     } else {
-      setFeedback(`Searching for "${searchInput}"... Showing closest matched pass.`);
+      setFeedback(`No pass found matching "${searchInput}". Please check the token or phone number.`);
     }
   };
 
