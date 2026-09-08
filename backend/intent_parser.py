@@ -81,32 +81,53 @@ def parse_with_llm(text: str) -> Optional[Dict[str, Any]]:
 
     # 1. Try Groq API first
     if groq_api_key:
-        try:
-            url = "https://api.groq.com/openai/v1/chat/completions"
-            headers = {
-                "Authorization": f"Bearer {groq_api_key}",
-                "Content-Type": "application/json"
-            }
-            body = {
-                "model": "llama-3.3-70b-versatile",
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": text}
-                ],
-                "response_format": {"type": "json_object"},
-                "temperature": 0.1,
-                "max_tokens": 512
-            }
-            res = requests.post(url, headers=headers, json=body, timeout=4.5)
-            if res.status_code == 200:
-                data = res.json()
-                content = data["choices"][0]["message"]["content"]
-                parsed = json.loads(content)
-                if isinstance(parsed, dict) and "crop" in parsed:
-                    return parsed
-        except Exception as e:
-            # Silently catch and proceed to Gemini or fallback
-            pass
+        candidate_models = [
+            os.getenv("GROQ_MODEL"),
+            "groq/compound-mini",
+            "openai/gpt-oss-20b",
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant"
+        ]
+        # remove None and retain order
+        seen = set()
+        models_to_try = [m for m in candidate_models if m and not (m in seen or seen.add(m))]
+
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {groq_api_key}",
+            "Content-Type": "application/json"
+        }
+
+        for model_name in models_to_try:
+            try:
+                body = {
+                    "model": model_name,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": text}
+                    ],
+                    "response_format": {"type": "json_object"},
+                    "temperature": 0.1,
+                    "max_tokens": 512
+                }
+                res = requests.post(url, headers=headers, json=body, timeout=4.5)
+                if res.status_code == 200:
+                    data = res.json()
+                    content = data["choices"][0]["message"]["content"].strip()
+                    # Strip any markdown fences
+                    if content.startswith("```"):
+                        lines = content.splitlines()
+                        if lines[0].startswith("```"):
+                            lines = lines[1:]
+                        if lines and lines[-1].startswith("```"):
+                            lines = lines[:-1]
+                        content = "\n".join(lines).strip()
+                    
+                    parsed = json.loads(content)
+                    if isinstance(parsed, dict) and "crop" in parsed:
+                        return parsed
+            except Exception:
+                continue
 
     # 2. Try Gemini API if available
     if gemini_api_key:
