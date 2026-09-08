@@ -33,3 +33,6 @@ Thumbs.db
 
 # Large raw archives
 *.zip
+
+# Scratch scripts
+scratch/
