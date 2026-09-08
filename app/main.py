@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 from datetime import date, datetime
 
 from fastapi import FastAPI, Query, Request
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from sqlmodel import select
 
 from app.config import (
@@ -22,6 +22,7 @@ from app.config import (
     WHATSAPP_ACCESS_TOKEN,
     WHATSAPP_VERIFY_TOKEN,
 )
+from app.dashboard import DASHBOARD_HTML
 from app.db import get_session, init_db
 from app.incidents import apply_incident
 from app.intent import (
@@ -248,3 +249,14 @@ async def list_bookings(for_date: str | None = None):
 @app.get("/admin/capacity")
 async def capacity_config():
     return {"mandi_id": MANDI_ID, "capacity_per_hour": CAPACITY_PER_HOUR}
+
+
+@app.get("/admin", response_class=HTMLResponse)
+@app.get("/dashboard", response_class=HTMLResponse)
+async def admin_dashboard():
+    """
+    The demo-day dashboard: reads the /admin/* JSON endpoints above and can
+    fire the incident button, all from one page with no build step. See
+    app/dashboard.py.
+    """
+    return HTMLResponse(DASHBOARD_HTML)

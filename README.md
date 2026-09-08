@@ -22,16 +22,22 @@ leave home.
 - `POST /admin/incident` — the "Bay 1 breakdown, +45 min" demo button.
   Recomputes affected bookings and fires a proactive WhatsApp alert to each
   one via `app/whatsapp_client.py`.
-- `GET /admin/bookings`, `GET /admin/capacity` — plain JSON, a stand-in for
-  the admin dashboard so you can see state without building the React UI.
+- `GET /admin/bookings`, `GET /admin/capacity` — plain JSON, the data the
+  dashboard below reads.
+- `GET /admin` (alias `/dashboard`) — a single self-contained HTML page
+  (`app/dashboard.py`), served directly by this app with no build step:
+  today's bookings, live stats (total booked / busiest hour / delayed
+  count), and the "Bay 1 breakdown" incident button, wired straight to the
+  endpoints above. This is the "closed-loop" moment for judges — trigger
+  it and watch the delay column update.
 - `tests/` — 9 tests, all passing. They prove the claims the pitch depends
   on: the scheduler can never exceed capacity, a bad/uncertain voice
   transcription never gets silently booked without confirmation, and the
   webhook verification handshake behaves correctly.
 
-**Not built** (intentionally, to stay inside a realistic scope): the React
-admin dashboard UI, TOTP/QR gate passes, Redis/Celery. See "Cut from the
-original plan" below for why.
+**Not built** (intentionally, to stay inside a realistic scope): a React
+frontend (the plain HTML dashboard above covers the demo need), TOTP/QR
+gate passes, Redis/Celery. See "Cut from the original plan" below for why.
 
 ## Setup (about 15 minutes)
 
@@ -149,9 +155,9 @@ moment for judges.
 - **TOTP/dynamic QR passes → not built.** Anti-fraud, zero demo value,
   real implementation time. Name it as future work if asked, per the
   original plan's own "flaws to name" section.
-- **React dashboard → plain JSON endpoints.** `/admin/bookings` gives you
-  everything a demo dashboard would show; wire it into a UI only if there's
-  time left over after the core flow is solid.
+- **React dashboard → one static HTML page.** `/admin` reads the same
+  `/admin/bookings` JSON and adds the incident button — everything a demo
+  needs, with no frontend build/deploy step to go wrong on stage.
 
 ## Project layout
 
@@ -162,8 +168,19 @@ app/
   intent.py       voice transcription + LLM intent extraction + confirmation
   incidents.py    delay propagation + proactive alerts
   whatsapp_client.py  outbound WhatsApp sends via Meta Cloud API, session-window aware
+  dashboard.py    the /admin HTML dashboard (self-contained, no build step)
   models.py       Booking / ConversationState / Incident tables
   config.py       all environment-driven settings
   db.py           SQLite engine/session
 tests/            9 tests — capacity guarantee, confirmation loop, e2e webhook, verification handshake
 ```
+
+## The demo dashboard
+
+Once the server is running, open `http://localhost:8000/admin` (or your
+ngrok URL + `/admin`) in a browser. It shows today's bookings and a "Trigger
+incident & alert farmers" button — use it right after a farmer books live on
+stage, so judges see the delay column update and know an alert would've
+gone out. The "from hour" field defaults to `9` (this project's
+`DAY_START_HOUR`); set it to match whatever hour your live demo booking
+actually landed in, or nothing will look affected.
