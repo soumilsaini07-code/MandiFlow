@@ -20,7 +20,7 @@ def test_intent_parsing():
     assert res["quantity_quintals"] == 40.0, f"Expected 40.0, got {res['quantity_quintals']}"
     assert res["vehicle_type"] == "Tractor-Trolley", f"Expected Tractor-Trolley, got {res['vehicle_type']}"
     assert res["village"] == "Rampur", f"Expected Rampur, got {res['village']}"
-    assert res["price_lock_rate"] == 2275.0, f"Expected 2275.0, got {res['price_lock_rate']}"
+    assert res["price_lock_rate"] == 2585.0, f"Expected 2585.0, got {res['price_lock_rate']}"
     print("[PASS] Intent parsing passed!")
 
 def test_slot_allocation_and_price_lock():
@@ -142,8 +142,31 @@ def test_disruption_cascade():
     print("[PASS] Disruption cascade and proactive alerts passed!")
     db.close()
 
+def test_duplicate_booking_rejection():
+    print("Testing Duplicate Booking Prevention...")
+    db = TestingSessionLocal()
+    intent = {
+        "farmer_name": "Ramesh Kumar",
+        "farmer_phone": "+919812999999",
+        "village": "Rampur",
+        "crop": "Wheat",
+        "quantity_quintals": 45.0,
+        "preferred_date": datetime.date.today().strftime("%Y-%m-%d"),
+        "preferred_time_window": "09:00",
+        "price_lock_rate": 2585.0
+    }
+    try:
+        allocate_slot(db, mandi_code="KARNAL-TEST", parsed_intent=intent, lane_type="EXPRESS")
+        assert False, "Should have rejected duplicate active booking on same date"
+    except ValueError as e:
+        assert "Active booking already exists" in str(e)
+        print("[PASS] Duplicate booking prevented successfully!")
+    finally:
+        db.close()
+
 if __name__ == "__main__":
     test_intent_parsing()
     test_slot_allocation_and_price_lock()
+    test_duplicate_booking_rejection()
     test_disruption_cascade()
     print("\nALL BACKEND CORE TESTS PASSED SUCCESSFULLY! [OK]")

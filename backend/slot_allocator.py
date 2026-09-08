@@ -5,6 +5,7 @@ import pyotp
 from typing import Dict, Any, Optional, Tuple, List
 from sqlalchemy.orm import Session
 from models import Mandi, Weighbridge, SlotBooking, Farmer
+from mandi_data_service import get_crop_msp
 
 def generate_unique_token() -> str:
     """Generates an official-looking mandi token: MS-YYYYMMDD-XXXX"""
@@ -20,22 +21,25 @@ def find_best_slot_and_bay(
     lane_type: str = "EXPRESS"
 ) -> Tuple[int, str, str]:
     """
-    Constraint-based micro-window allocator with 80/20 dual-track split.
+    Greedy capacity-aware allocator with 80/20 dual-track split.
+    Dynamically respects mandi.weighbridge_count bays and hourly capacity.
     Returns: (bay_assigned, window_start, window_end)
     """
     total_capacity = mandi.hourly_capacity_per_bay  # e.g., 4 vehicles per bay/hour
     max_express_per_bay = int(total_capacity * 0.80) if lane_type == "EXPRESS" else total_capacity
+    weighbridge_count = max(1, mandi.weighbridge_count or 2)
     
-    # Query all bookings for this date
+    # Query all active bookings for this date
     existing_bookings = db.query(SlotBooking).filter(
         SlotBooking.mandi_id == mandi.id,
         SlotBooking.scheduled_date == target_date,
         SlotBooking.status.notin_(["CANCELLED"])
     ).all()
 
-    # Build hour -> bay -> count map
+    # Dynamic hour -> bay -> count map for all configured bays
     usage: Dict[int, Dict[int, int]] = {
-        h: {1: 0, 2: 0} for h in range(mandi.operating_start_hour, mandi.operating_end_hour)
+        h: {b: 0 for b in range(1, weighbridge_count + 1)}
+        for h in range(mandi.operating_start_hour, mandi.operating_end_hour)
     }
 
     for b in existing_bookings:
@@ -62,13 +66,9 @@ def find_best_slot_and_bay(
     for h in hour_candidates:
         if h not in usage:
             continue
-        # Check bay 1 vs bay 2
-        bay_loads = [
-            (usage[h][1], 1),
-            (usage[h][2], 2)
-        ]
-        # Pick least loaded bay
-        bay_loads.sort(key=lambda x: x[0])
+        # Check load across all configured bays dynamically
+        bay_loads = [(usage[h][bay], bay) for bay in range(1, weighbridge_count + 1)]
+        bay_loads.sort(key=lambda x: x[0])  # Pick least-utilized bay
         for load, bay in bay_loads:
             if load < max_express_per_bay:
                 chosen_hour = h
@@ -96,13 +96,30 @@ def allocate_slot(
 ) -> SlotBooking:
     """
     Allocates a verified slot, generates TOTP security keys and price-lock certificate.
+    Enforces per-phone rate limiting to prevent duplicate active bookings on the same date.
     """
+    phone = parsed_intent.get("farmer_phone", "+919812345678")
+    preferred_date = parsed_intent.get("preferred_date", datetime.date.today().strftime("%Y-%m-%d"))
+
+    # Priority 2, Item 7: Check per-phone active booking cap for this date
+    existing_active = db.query(SlotBooking).filter(
+        SlotBooking.farmer_phone == phone,
+        SlotBooking.scheduled_date == preferred_date,
+        SlotBooking.status.notin_(["CANCELLED", "PAYMENT_DISBURSED"])
+    ).first()
+    if existing_active:
+        raise ValueError(
+            f"Active booking already exists for phone {phone} on {preferred_date} "
+            f"(Token: {existing_active.token_number}, Status: {existing_active.status}). "
+            f"Multiple simultaneous bookings on the same date are restricted."
+        )
+
     mandi = db.query(Mandi).filter(Mandi.code == mandi_code).first()
     if not mandi:
         # Create default mandi if missing
         mandi = Mandi(
-            code="KARNAL-01",
-            name="Karnal Main APMC Grain Market",
+            code=mandi_code or "KARNAL-01",
+            name="Karnal MandiFlow APMC Grain Market",
             state="Haryana",
             district="Karnal",
             weighbridge_count=2,
@@ -114,7 +131,6 @@ def allocate_slot(
         db.refresh(mandi)
 
     # Resolve or create Farmer
-    phone = parsed_intent.get("farmer_phone", "+919812345678")
     farmer = db.query(Farmer).filter(Farmer.phone == phone).first()
     if not farmer:
         farmer = Farmer(
@@ -127,7 +143,6 @@ def allocate_slot(
         db.refresh(farmer)
 
     # Determine window
-    preferred_date = parsed_intent.get("preferred_date", datetime.date.today().strftime("%Y-%m-%d"))
     preferred_time = parsed_intent.get("preferred_time_window", "09:00")
     try:
         pref_hour = int(preferred_time.split(":")[0])
@@ -147,7 +162,7 @@ def allocate_slot(
     now_iso = datetime.datetime.utcnow().isoformat() + "Z"
     token_number = generate_unique_token()
     crop = parsed_intent.get("crop", "Wheat")
-    price_rate = float(parsed_intent.get("price_lock_rate", 2275.0))
+    price_rate = float(parsed_intent.get("price_lock_rate") or get_crop_msp(crop) or 2585.0)
 
     # SHA-256 seal
     seal_raw = f"{token_number}:{phone}:{crop}:{price_rate}:{now_iso}"
@@ -184,5 +199,7 @@ def allocate_slot(
 
 def verify_totp_token(booking: SlotBooking, user_code: str) -> bool:
     """Verifies dynamic 6-digit TOTP token to prevent screenshot or fake gate pass entry"""
+    if not user_code or not booking.totp_secret:
+        return False
     totp = pyotp.TOTP(booking.totp_secret, interval=60)
-    return totp.verify(user_code, valid_window=2)
+    return totp.verify(str(user_code).strip(), valid_window=2)

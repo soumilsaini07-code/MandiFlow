@@ -58,7 +58,10 @@ export default function CommandCenter({
     try {
       await fetch('http://localhost:8000/api/advance-status', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Admin-Key': 'mandiflow_secret_2026'
+        },
         body: JSON.stringify({
           token_number,
           target_status: nextStatus,
@@ -76,7 +79,12 @@ export default function CommandCenter({
   const handlePromoteStandby = async () => {
     setLoadingAction(true);
     try {
-      const res = await fetch('http://localhost:8000/api/promote-standby', { method: 'POST' });
+      const res = await fetch('http://localhost:8000/api/promote-standby', { 
+        method: 'POST',
+        headers: {
+          'X-Admin-Key': 'mandiflow_secret_2026'
+        }
+      });
       const data = await res.json();
       if (data.success) {
         confetti({ particleCount: 50, spread: 60 });
@@ -126,7 +134,12 @@ export default function CommandCenter({
           </div>
           <button 
             onClick={async () => {
-              await fetch(`http://localhost:8000/api/incidents/${active_incidents[0].id}/resolve`, { method: 'POST' });
+              await fetch(`http://localhost:8000/api/incidents/${active_incidents[0].id}/resolve`, { 
+                method: 'POST',
+                headers: {
+                  'X-Admin-Key': 'mandiflow_secret_2026'
+                }
+              });
               refreshData();
             }}
             className="btn btn-secondary"

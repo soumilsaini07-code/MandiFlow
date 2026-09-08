@@ -24,7 +24,10 @@ export default function DisruptionSimulator({ dashboardData, refreshData }) {
     try {
       const res = await fetch('http://localhost:8000/api/incidents/trigger', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Admin-Key': 'mandiflow_secret_2026'
+        },
         body: JSON.stringify({
           mandi_id: 1,
           incident_type: type,
@@ -52,7 +55,12 @@ export default function DisruptionSimulator({ dashboardData, refreshData }) {
     try {
       if (active_incidents && active_incidents.length > 0) {
         for (const inc of active_incidents) {
-          await fetch(`http://localhost:8000/api/incidents/${inc.id}/resolve`, { method: 'POST' });
+          await fetch(`http://localhost:8000/api/incidents/${inc.id}/resolve`, { 
+            method: 'POST',
+            headers: {
+              'X-Admin-Key': 'mandiflow_secret_2026'
+            }
+          });
         }
       }
       setLastDispatchedAlerts([]);

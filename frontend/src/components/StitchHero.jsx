@@ -225,11 +225,12 @@ export default function StitchHero({
                 </button>
 
                 <button 
-                  onClick={() => onShareWhatsApp ? onShareWhatsApp(pass) : alert(`Pass ${pass.token_number} forwarded to WhatsApp (+91 9812-XXXXXX)`)}
+                  onClick={() => onShareWhatsApp && onShareWhatsApp(pass)}
                   className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary-dark transition-all text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  title="Preview official WhatsApp e-Parchi notification"
                 >
-                  <span className="material-symbols-outlined text-[16px]">share</span>
-                  <span>WhatsApp Pass</span>
+                  <span className="material-symbols-outlined text-[16px]">visibility</span>
+                  <span>Preview WhatsApp Message</span>
                 </button>
               </div>
             </div>

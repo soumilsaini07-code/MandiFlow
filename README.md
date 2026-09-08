@@ -25,10 +25,10 @@ MandiFlow introduces **coordinated arrival micro-windows, digital price guarante
  [Farmer: WhatsApp Voice / Text / Dialect Audio]
                        │
                        ▼
- [Multilingual Voice & Intent Engine (Whisper / Gemini / Groq)]
+ [Multilingual Voice & Intent Engine (Whisper / Groq / Gemini LLM)]
                        │
                        ▼
- [Dynamic Slot Allocation Engine (OR-Tools / Capacity Solver)]
+ [Dynamic Slot Allocation Engine (Greedy Capacity-Aware Allocator)]
                        │
           ┌────────────┴────────────┐
           ▼                         ▼
@@ -87,7 +87,7 @@ Administrative command suite with 5 dedicated workflow modules:
 
 - **Frontend**: React 18, Vite, Vanilla CSS + Tailwind CSS, Material Symbols Outlined, Canvas Confetti.
 - **Backend**: Python 3.10+, FastAPI, SQLite (SQLAlchemy), Pydantic v2, Uvicorn.
-- **Data & Intelligence**: Agmarknet 2026-27 MSP tables, regex/NLP voice intent extraction, OR-Tools capacity logic.
+- **Data & Intelligence**: Agmarknet 2026-27 MSP tables, Groq/Gemini LLM JSON intent extraction with regex fallback, Whisper voice audio transcription, greedy capacity-aware allocator with dynamic weighbridge scaling.
 - **Communication**: Twilio WhatsApp Webhook integration, Web Speech Synthesis API.
 
 ---

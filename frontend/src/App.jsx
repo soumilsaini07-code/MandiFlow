@@ -65,17 +65,11 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const [whatsAppModalPass, setWhatsAppModalPass] = useState(null);
+  const [copiedMessage, setCopiedMessage] = useState(false);
+
   const handleShareWhatsApp = (pass) => {
-    alert(
-      `🌾 MandiFlow e-Parchi Forwarded!\n\n` +
-      `Token: ${pass.token_number}\n` +
-      `Farmer: ${pass.farmer_name} (${pass.village})\n` +
-      `Crop: ${pass.crop} - ${pass.quantity_quintals} Quintals\n` +
-      `Arrival Gate: North Gate (Bay ${pass.bay_assigned})\n` +
-      `Window: ${pass.window_start || pass.scheduled_window_start} - ${pass.window_end || pass.scheduled_window_end}\n` +
-      `Locked MSP: ₹${pass.price_lock_rate}/qtl (SHA-256 Valid)\n\n` +
-      `Sent to registered mobile via WhatsApp Gateway.`
-    );
+    setWhatsAppModalPass(pass);
   };
 
   return (
@@ -208,6 +202,99 @@ export default function App() {
 
       {/* Stitch Footer */}
       <StitchFooter onNavigate={(tab) => setActiveTab(tab)} />
+
+      {/* WhatsApp Message Preview Modal */}
+      {whatsAppModalPass && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-surface-card rounded-2xl shadow-2xl border border-border-subtle max-w-md w-full overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-primary-deep p-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[20px] text-accent">chat</span>
+                <div>
+                  <h3 className="font-bold text-sm">WhatsApp e-Parchi Dispatch Preview</h3>
+                  <p className="text-[11px] text-emerald-200">Recipient: +91 9812-XXXXXX ({whatsAppModalPass.farmer_name})</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setWhatsAppModalPass(null)}
+                className="text-white/70 hover:text-white text-lg font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body: WhatsApp Chat Bubble */}
+            <div className="p-5 bg-[#EFEAE2] space-y-4">
+              <div className="text-[11px] text-center text-secondary font-medium">
+                TODAY • ENCRYPTED GATEWAY DELIVERY
+              </div>
+
+              <div className="bg-white rounded-xl rounded-tl-none p-4 shadow-sm border border-[#E0D8CB] text-xs space-y-2 font-sans text-neutral-800 relative max-w-sm">
+                <div className="font-bold text-primary-deep flex items-center gap-1.5 border-b border-neutral-100 pb-2">
+                  <span>🌾</span>
+                  <span>MandiFlow Digital Arrival Pass</span>
+                </div>
+                
+                <p><strong>Namaste {whatsAppModalPass.farmer_name} ji!</strong></p>
+                <p>Aapka Mandi arrival slot safaltapoorvak confirm ho gaya hai.</p>
+                
+                <div className="bg-neutral-50 p-2.5 rounded-lg border border-neutral-200 font-mono text-[11px] space-y-1">
+                  <div><strong>Token No:</strong> {whatsAppModalPass.token_number}</div>
+                  <div><strong>Crop &amp; Qty:</strong> {whatsAppModalPass.crop} ({whatsAppModalPass.quantity_quintals} Qtl)</div>
+                  <div><strong>Slot Window:</strong> {whatsAppModalPass.window_start || whatsAppModalPass.scheduled_window_start} - {whatsAppModalPass.window_end || whatsAppModalPass.scheduled_window_end}</div>
+                  <div><strong>Gate &amp; Bay:</strong> North Gate (Weighbridge Bay {whatsAppModalPass.bay_assigned})</div>
+                  <div><strong>MSP Lock:</strong> ₹{whatsAppModalPass.price_lock_rate}/qtl</div>
+                  <div><strong>Entry TOTP:</strong> {whatsAppModalPass.dynamic_totp_code || '639201'}</div>
+                </div>
+
+                <p className="text-[10px] text-neutral-500 pt-1">
+                  ⚠️ Gate par entry ke samay yah TOTP code officer ko dikhayein.
+                </p>
+
+                <div className="text-[10px] text-right text-neutral-400 flex items-center justify-end gap-1 pt-1">
+                  <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="text-blue-500 font-bold">✓✓</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="p-4 bg-surface flex items-center justify-between gap-2 border-t border-border-subtle">
+              <button
+                onClick={() => {
+                  const messageText = `🌾 MandiFlow e-Parchi Confirmation\nToken: ${whatsAppModalPass.token_number}\nFarmer: ${whatsAppModalPass.farmer_name} (${whatsAppModalPass.village})\nCrop: ${whatsAppModalPass.crop} - ${whatsAppModalPass.quantity_quintals} Qtl\nGate: North Gate (Bay ${whatsAppModalPass.bay_assigned})\nWindow: ${whatsAppModalPass.window_start || whatsAppModalPass.scheduled_window_start} - ${whatsAppModalPass.window_end || whatsAppModalPass.scheduled_window_end}\nLocked MSP: ₹${whatsAppModalPass.price_lock_rate}/qtl\nEntry TOTP: ${whatsAppModalPass.dynamic_totp_code || '639201'}`;
+                  navigator.clipboard.writeText(messageText);
+                  setCopiedMessage(true);
+                  setTimeout(() => setCopiedMessage(false), 2500);
+                }}
+                className="px-3 py-2 rounded-xl bg-surface-low border border-border-subtle text-xs font-bold text-primary-deep hover:bg-surface-low/80 flex items-center gap-1 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[15px]">content_copy</span>
+                <span>{copiedMessage ? 'Copied!' : 'Copy Text'}</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(`🌾 *MandiFlow Arrival Pass*\nToken: ${whatsAppModalPass.token_number}\nFarmer: ${whatsAppModalPass.farmer_name}\nCrop: ${whatsAppModalPass.crop} (${whatsAppModalPass.quantity_quintals} Qtl)\nSlot: ${whatsAppModalPass.window_start || whatsAppModalPass.scheduled_window_start} - ${whatsAppModalPass.window_end || whatsAppModalPass.scheduled_window_end}\nBay: ${whatsAppModalPass.bay_assigned}\nTOTP: ${whatsAppModalPass.dynamic_totp_code || '639201'}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-2 rounded-xl bg-[#25D366] hover:bg-[#1EBE5D] text-white text-xs font-bold flex items-center gap-1 cursor-pointer shadow-xs"
+                >
+                  <span className="material-symbols-outlined text-[15px]">open_in_new</span>
+                  <span>WhatsApp Web</span>
+                </a>
+                <button
+                  onClick={() => setWhatsAppModalPass(null)}
+                  className="px-3 py-2 rounded-xl bg-surface-low hover:bg-border-subtle text-xs font-bold text-on-surface cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

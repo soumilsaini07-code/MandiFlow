@@ -421,7 +421,7 @@ export default function VoiceSimulator({ onBookingCreated }) {
             <ShieldCheck size={16} /> Zero-Hardware Architecture
           </div>
           <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '6px', lineHeight: 1.4 }}>
-            Farmers require zero app downloads or smartphones. Runs on standard WhatsApp Voice Notes via Twilio Webhook (<code className="mono">/webhook/whatsapp</code>) with sub-second Whisper transcription and instant TwiML slot issuance.
+            Farmers require zero app downloads or smartphones. WhatsApp Voice Notes are transcribed via Whisper on the backend webhook (<code className="mono">/webhook/whatsapp</code>), while this web simulator uses browser speech / presets connected to the live backend LLM intent-parsing engine.
           </p>
         </div>
       </div>

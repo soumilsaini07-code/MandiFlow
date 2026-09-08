@@ -33,7 +33,10 @@ export default function StitchYardOperations({
     try {
       await fetch('http://localhost:8000/api/advance-status', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Admin-Key': 'mandiflow_secret_2026'
+        },
         body: JSON.stringify({
           token_number,
           target_status: nextStatus,
@@ -77,7 +80,10 @@ export default function StitchYardOperations({
             </div>
             <button
               onClick={async () => {
-                await fetch(`http://localhost:8000/api/incidents/${active_incidents[0].id}/resolve`, { method: 'POST' });
+                await fetch(`http://localhost:8000/api/incidents/${active_incidents[0].id}/resolve`, { 
+                  method: 'POST',
+                  headers: { 'X-Admin-Key': 'mandiflow_secret_2026' }
+                });
                 refreshData();
               }}
               className="px-4 py-2 rounded-xl bg-accent text-white hover:bg-accent/90 text-xs font-bold transition-all cursor-pointer"

@@ -12,6 +12,7 @@ export default function OfficerPortal({ dashboardData, refreshData, onBackToFarm
   const [moistureValue, setMoistureValue] = useState('11.4');
   const [grossWeight, setGrossWeight] = useState('78.5');
   const [tareWeight, setTareWeight] = useState('33.5');
+  const [totpInput, setTotpInput] = useState('');
 
   const { mandi, metrics, express_slots = [], bays = [] } = dashboardData || {};
 
@@ -47,26 +48,41 @@ export default function OfficerPortal({ dashboardData, refreshData, onBackToFarm
   };
 
   // Approve Gate Entry
+  // Approve Gate Entry with Mandatory TOTP Code
   const handleApproveGateEntry = async () => {
     if (!scannedFarmer) return;
+    const totpToSend = (totpInput.trim() || scannedFarmer.dynamic_totp_code || '').trim();
+    if (!totpToSend) {
+      setScanMessage({ type: 'error', text: 'Dynamic 6-digit TOTP code is required for gate check-in verification.' });
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch('http://localhost:8000/api/check-in', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Admin-Key': 'mandiflow_secret_2026'
+        },
         body: JSON.stringify({
-          token_number: scannedFarmer.token_number
+          token_number: scannedFarmer.token_number,
+          totp_code: totpToSend
         })
       });
       if (res.ok) {
         const updated = await res.json();
         setScannedFarmer((prev) => ({ ...prev, status: 'GATE_ENTRY' }));
-        setScanMessage({ type: 'success', text: `Gate Entry Approved for ${scannedFarmer.farmer_name}! Vehicle routed to Bay ${scannedFarmer.bay_assigned}.` });
+        setScanMessage({ type: 'success', text: `Gate Entry Approved (TOTP Validated) for ${scannedFarmer.farmer_name}! Vehicle routed to Bay ${scannedFarmer.bay_assigned}.` });
         confetti({ particleCount: 40, spread: 50 });
         await refreshData();
+      } else {
+        const errData = await res.json();
+        setScanMessage({ type: 'error', text: errData.detail || 'Gate Check-in failed. Please verify TOTP code.' });
       }
     } catch (err) {
       console.error(err);
+      setScanMessage({ type: 'error', text: 'Error connecting to check-in service.' });
     } finally {
       setLoading(false);
     }
@@ -79,7 +95,10 @@ export default function OfficerPortal({ dashboardData, refreshData, onBackToFarm
     try {
       const res = await fetch('http://localhost:8000/api/advance-status', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Admin-Key': 'mandiflow_secret_2026'
+        },
         body: JSON.stringify({
           token_number: scannedFarmer.token_number,
           target_status: 'QUALITY_ASSAY',
@@ -90,6 +109,9 @@ export default function OfficerPortal({ dashboardData, refreshData, onBackToFarm
         setScannedFarmer((prev) => ({ ...prev, status: 'QUALITY_ASSAY', moisture_percentage: parseFloat(moistureValue) }));
         setScanMessage({ type: 'success', text: `Quality Assay Certified: ${moistureValue}% Moisture. Passed Fair Average Quality (FAQ) standards.` });
         await refreshData();
+      } else {
+        const errData = await res.json();
+        setScanMessage({ type: 'error', text: errData.detail || 'Failed to certify assay.' });
       }
     } catch (err) {
       console.error(err);
@@ -107,7 +129,10 @@ export default function OfficerPortal({ dashboardData, refreshData, onBackToFarm
       const t = parseFloat(tareWeight);
       const res = await fetch('http://localhost:8000/api/advance-status', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Admin-Key': 'mandiflow_secret_2026'
+        },
         body: JSON.stringify({
           token_number: scannedFarmer.token_number,
           target_status: 'WEIGHED',
@@ -120,6 +145,9 @@ export default function OfficerPortal({ dashboardData, refreshData, onBackToFarm
         setScannedFarmer((prev) => ({ ...prev, status: 'WEIGHED', gross_weight_quintals: g, tare_weight_quintals: t, net_weight_quintals: net }));
         setScanMessage({ type: 'success', text: `Weighment Complete! Net Load: ${net.toFixed(1)} Qtl. Scale slip issued.` });
         await refreshData();
+      } else {
+        const errData = await res.json();
+        setScanMessage({ type: 'error', text: errData.detail || 'Weighment recording failed.' });
       }
     } catch (err) {
       console.error(err);
@@ -135,7 +163,10 @@ export default function OfficerPortal({ dashboardData, refreshData, onBackToFarm
     try {
       const res = await fetch('http://localhost:8000/api/advance-status', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Admin-Key': 'mandiflow_secret_2026'
+        },
         body: JSON.stringify({
           token_number: scannedFarmer.token_number,
           target_status: 'PAYMENT_DISBURSED'
@@ -147,6 +178,9 @@ export default function OfficerPortal({ dashboardData, refreshData, onBackToFarm
         setScanMessage({ type: 'success', text: `Direct Benefit Transfer (DBT) of ₹${data.payment_amount.toLocaleString('en-IN')} successfully credited to farmer bank account!` });
         confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
         await refreshData();
+      } else {
+        const errData = await res.json();
+        setScanMessage({ type: 'error', text: errData.detail || 'DBT disbursement failed.' });
       }
     } catch (err) {
       console.error(err);
@@ -159,7 +193,12 @@ export default function OfficerPortal({ dashboardData, refreshData, onBackToFarm
   const handlePromoteStandby = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/promote-standby', { method: 'POST' });
+      const res = await fetch('http://localhost:8000/api/promote-standby', { 
+        method: 'POST',
+        headers: {
+          'X-Admin-Key': 'mandiflow_secret_2026'
+        }
+      });
       const data = await res.json();
       if (data.success) {
         setScanMessage({ type: 'success', text: `Standby Farmer ${data.promoted.farmer_name} (${data.promoted.promoted_token}) successfully promoted to Express Lane!` });
@@ -339,6 +378,25 @@ export default function OfficerPortal({ dashboardData, refreshData, onBackToFarm
                     <span className="text-on-surface-subtle block">Slot Window:</span>
                     <strong className="text-accent">{scannedFarmer.window_start || scannedFarmer.scheduled_window_start} - {scannedFarmer.window_end || scannedFarmer.scheduled_window_end}</strong>
                   </div>
+                </div>
+
+                <div className="pt-3 pb-1 border-t border-border-light flex items-center justify-between gap-4">
+                  <div>
+                    <label className="text-[11px] font-bold text-accent uppercase tracking-wider block">
+                      Mandatory Security TOTP (from Farmer e-Parchi)
+                    </label>
+                    <span className="text-[11px] text-on-surface-subtle block">
+                      Dynamic 6-digit gate verification code
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={totpInput !== '' ? totpInput : (scannedFarmer.dynamic_totp_code || '')}
+                    onChange={(e) => setTotpInput(e.target.value)}
+                    placeholder="e.g. 639201"
+                    className="w-32 text-center font-mono font-bold tracking-widest text-sm py-1.5 px-2.5 rounded-lg border border-primary/40 bg-surface-low text-primary-deep focus:outline-none focus:border-primary focus:bg-white"
+                  />
                 </div>
 
                 <div className="pt-2 flex items-center justify-between border-t border-border-light">

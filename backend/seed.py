@@ -6,7 +6,11 @@ from sqlalchemy.orm import sessionmaker
 from models import Base, Mandi, Weighbridge, Farmer, SlotBooking, DisruptionIncident, NotificationLog
 from mandi_data_service import get_crop_msp
 
-DATABASE_URL = "sqlite:///./mandi_setu.db"
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./mandiflow.db")
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -26,7 +30,7 @@ def seed_database():
     # 1. Mandi
     mandi = Mandi(
         code="KARNAL-01",
-        name="Karnal APMC Grain Mandi (हरियाणा राज्य कृषि विपणन बोर्ड)",
+        name="Karnal MandiFlow APMC Grain Market (हरियाणा राज्य कृषि विपणन बोर्ड)",
         state="Haryana",
         district="Karnal",
         weighbridge_count=2,

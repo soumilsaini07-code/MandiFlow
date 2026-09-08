@@ -1,7 +1,15 @@
+import os
 import re
+import json
 import datetime
 from typing import Dict, Any, Optional
+import requests
+from dotenv import load_dotenv
+
 from mandi_data_service import get_crop_msp
+
+# Load environment variables
+load_dotenv()
 
 CROP_SYNONYMS = {
     "wheat": ["wheat", "gehu", "gehoon", "kanak", "gehun", "गेहूं", "गेंहू"],
@@ -32,25 +40,139 @@ VILLAGE_EXAMPLES = [
     "Assandh", "Kunjpura", "Nissing", "Karnal", "Samalkha"
 ]
 
+def normalize_crop_name(raw_crop: str) -> str:
+    """Normalizes any dialect or informal crop name to official title"""
+    lowered = (raw_crop or "").strip().lower()
+    for crop_key, synonyms in CROP_SYNONYMS.items():
+        if any(syn in lowered for syn in synonyms):
+            return crop_key.capitalize()
+    return raw_crop.capitalize() if raw_crop else "Wheat"
+
+def parse_with_llm(text: str) -> Optional[Dict[str, Any]]:
+    """
+    Calls Groq (or Gemini) API using structured JSON output to extract entities.
+    Returns None on missing API key, timeout, parsing error, or exception.
+    """
+    groq_api_key = os.getenv("GROQ_API_KEY")
+    gemini_api_key = os.getenv("GEMINI_API_KEY")
+
+    if not groq_api_key and not gemini_api_key:
+        return None
+
+    today_str = datetime.date.today().strftime("%Y-%m-%d")
+    tomorrow_str = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+
+    system_prompt = (
+        "You are an AI agricultural procurement assistant for MandiFlow, an Indian APMC grain mandi platform. "
+        "Extract arrival scheduling details from Hindi, Hinglish, or English farmer messages. "
+        f"Today's date is {today_str}. If farmer says 'kal' or 'tomorrow', use {tomorrow_str}. "
+        "Respond ONLY with a valid JSON object matching this schema:\n"
+        "{\n"
+        '  "farmer_name": "str (e.g. Sardar Gurpreet Singh, or Kisan Bandhu if unspecified)",\n'
+        '  "village": "str (e.g. Rampur, Taraori, or Rampur if unspecified)",\n'
+        '  "crop": "str (Wheat, Mustard, Paddy, Bajra, Maize, Gram, Cotton, etc.)",\n'
+        '  "quantity_quintals": float (convert tons to quintals by *10, trolley to 40, bags to 0.5),\n'
+        '  "vehicle_type": "str (Tractor-Trolley, Mini-Truck, Truck, or Bullock Cart)",\n'
+        '  "preferred_date": "YYYY-MM-DD",\n'
+        '  "preferred_time_window": "HH:00 (between 08:00 and 17:00, default 09:00)"\n'
+        "}\n"
+        "Do not include any explanation or markdown wrapping, output raw JSON only."
+    )
+
+    # 1. Try Groq API first
+    if groq_api_key:
+        try:
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {groq_api_key}",
+                "Content-Type": "application/json"
+            }
+            body = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": text}
+                ],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.1,
+                "max_tokens": 512
+            }
+            res = requests.post(url, headers=headers, json=body, timeout=4.5)
+            if res.status_code == 200:
+                data = res.json()
+                content = data["choices"][0]["message"]["content"]
+                parsed = json.loads(content)
+                if isinstance(parsed, dict) and "crop" in parsed:
+                    return parsed
+        except Exception as e:
+            # Silently catch and proceed to Gemini or fallback
+            pass
+
+    # 2. Try Gemini API if available
+    if gemini_api_key:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_api_key}"
+            headers = {"Content-Type": "application/json"}
+            body = {
+                "contents": [
+                    {
+                        "parts": [
+                            {"text": f"{system_prompt}\n\nFarmer Message: {text}"}
+                        ]
+                    }
+                ],
+                "generationConfig": {
+                    "response_mime_type": "application/json",
+                    "temperature": 0.1
+                }
+            }
+            res = requests.post(url, headers=headers, json=body, timeout=4.5)
+            if res.status_code == 200:
+                data = res.json()
+                content = data["candidates"][0]["content"]["parts"][0]["text"]
+                parsed = json.loads(content)
+                if isinstance(parsed, dict) and "crop" in parsed:
+                    return parsed
+        except Exception:
+            pass
+
+    return None
+
 def parse_farmer_intent(text: str, caller_phone: Optional[str] = None) -> Dict[str, Any]:
     """
-    Parses Hindi, Hinglish, or English farmer utterances into structured JSON:
-    {
-      "farmer_name": str,
-      "village": str,
-      "crop": str,
-      "quantity_quintals": float,
-      "vehicle_type": str,
-      "preferred_date": str (YYYY-MM-DD),
-      "preferred_time_window": str (HH:MM),
-      "price_lock_rate": float,
-      "confidence": float,
-      "raw_text": str
-    }
+    Parses Hindi, Hinglish, or English farmer utterances into structured JSON.
+    Tries the real LLM path first (Groq/Gemini); on failure or missing keys,
+    gracefully falls back to high-speed regex matching for zero-latency demo safety.
     """
     cleaned = text.strip()
     lowered = cleaned.lower()
 
+    # Step A: Attempt Real LLM Extraction First
+    llm_extracted = parse_with_llm(cleaned)
+    if llm_extracted:
+        crop = normalize_crop_name(llm_extracted.get("crop", "Wheat"))
+        msp_price = get_crop_msp(crop)
+        try:
+            qty = float(llm_extracted.get("quantity_quintals", 40.0))
+        except (ValueError, TypeError):
+            qty = 40.0
+
+        return {
+            "farmer_name": llm_extracted.get("farmer_name") or "Kisan Bandhu",
+            "farmer_phone": caller_phone or "+919812345678",
+            "village": llm_extracted.get("village") or "Rampur",
+            "crop": crop,
+            "quantity_quintals": round(qty, 1),
+            "vehicle_type": llm_extracted.get("vehicle_type") or "Tractor-Trolley",
+            "preferred_date": llm_extracted.get("preferred_date") or datetime.date.today().strftime("%Y-%m-%d"),
+            "preferred_time_window": llm_extracted.get("preferred_time_window") or "09:00",
+            "price_lock_rate": msp_price,
+            "confidence": 0.96,
+            "source": "LLM_STRUCTURED_OUTPUT",
+            "raw_text": cleaned
+        }
+
+    # Step B: Deterministic Regex/Keyword Fallback (Demo-Safe)
     # 1. Detect Crop
     detected_crop = "Wheat"
     matched_crop_key = "wheat"
@@ -87,7 +209,6 @@ def parse_farmer_intent(text: str, caller_phone: Optional[str] = None) -> Dict[s
     if not qty_match:
         digits = re.findall(r'\b(\d{1,3})\b', lowered)
         if digits:
-            # pick first plausible quantity digit (between 5 and 500)
             for d in digits:
                 num = float(d)
                 if 5 <= num <= 400:
@@ -111,7 +232,7 @@ def parse_farmer_intent(text: str, caller_phone: Optional[str] = None) -> Dict[s
     if village_regex and village_regex.group(1).lower() not in ["tractor", "kal", "aaj", "gehu", "wheat", "quintal"]:
         detected_village = village_regex.group(1).capitalize()
 
-    # 5. Detect Farmer Name (if mentioned: e.g. "Kisan Ramesh Sharma", "Mera naam Ramesh hai")
+    # 5. Detect Farmer Name
     farmer_name = "Kisan Ramesh Kumar"
     name_patterns = [
         r'(?:naam|name\s+is|kisan)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)',
@@ -164,5 +285,6 @@ def parse_farmer_intent(text: str, caller_phone: Optional[str] = None) -> Dict[s
         "preferred_time_window": preferred_time_str,
         "price_lock_rate": msp_price,
         "confidence": confidence,
+        "source": "REGEX_KEYWORD_FALLBACK",
         "raw_text": cleaned
     }
