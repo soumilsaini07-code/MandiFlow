@@ -36,7 +36,7 @@ export default function Navbar({ activeTab, setActiveTab, mandiInfo }) {
           <span style={{ fontSize: '1.4rem' }}>🌾</span>
           <div>
             <h1 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.01em', lineHeight: 1.1 }}>
-              Mandi<span style={{ color: 'var(--emerald-400)' }}>Setu</span>
+              Mandi<span style={{ color: 'var(--emerald-400)' }}>Flow</span>
             </h1>
             <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
               Closed-Loop Procurement Engine

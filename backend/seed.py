@@ -313,7 +313,7 @@ def seed_database():
         db.commit()
         db.refresh(farmer)
 
-        token_no = f"MS-{datetime.date.today().strftime('%m%d')}-{100 + idx}"
+        token_no = f"MF-{datetime.date.today().strftime('%m%d')}-{100 + idx}"
         totp_sec = pyotp.random_base32()
         official_rate = get_crop_msp(f_data['crop'])
         seal = f"{token_no}:{farmer.phone}:{f_data['crop']}:{official_rate}:{now_iso}"

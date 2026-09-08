@@ -8,10 +8,10 @@ from models import Mandi, Weighbridge, SlotBooking, Farmer
 from mandi_data_service import get_crop_msp
 
 def generate_unique_token() -> str:
-    """Generates an official-looking mandi token: MS-YYYYMMDD-XXXX"""
+    """Generates an official-looking mandi token: MF-YYYYMMDD-XXXX"""
     now = datetime.datetime.utcnow()
     rand_suffix = uuid.uuid4().hex[:4].upper()
-    return f"MS-{now.strftime('%m%d')}-{rand_suffix}"
+    return f"MF-{now.strftime('%m%d')}-{rand_suffix}"
 
 def find_best_slot_and_bay(
     db: Session,

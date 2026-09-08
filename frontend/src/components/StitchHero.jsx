@@ -21,7 +21,7 @@ export default function StitchHero({
   };
 
   const pass = currentPass || {
-    token_number: "#AGRI-1042",
+    token_number: "#MF-1042",
     farmer_name: "Sardar Gurpreet Singh",
     village: "Amritsar",
     crop: "Sharbati Wheat",
@@ -72,7 +72,7 @@ export default function StitchHero({
               <div className="flex-1 flex rounded-xl border border-border-subtle bg-surface-low/50 px-3.5 py-3 focus-within:border-primary focus-within:bg-white transition-all">
                 <input 
                   className="w-full bg-transparent text-sm font-medium text-on-surface placeholder:text-on-surface-subtle/70 focus:outline-none" 
-                  placeholder="Enter Pass Token (e.g. MS-0908-103) or Mobile" 
+                  placeholder="Enter Pass Token (e.g. MF-0908-103) or Mobile" 
                   type="text" 
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}

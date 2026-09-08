@@ -287,7 +287,7 @@ export default function OfficerPortal({ dashboardData, refreshData, onBackToFarm
             </span>
             <input
               type="text"
-              placeholder="Scan or Enter Token No (e.g. MS-0908-105)..."
+              placeholder="Scan or Enter Token No (e.g. MF-0908-105)..."
               value={scanToken}
               onChange={(e) => setScanToken(e.target.value)}
               className="w-full pl-9 pr-3 py-2 bg-surface-low rounded-lg text-xs font-mono font-bold text-on-surface focus:bg-white focus:outline-none focus:border-primary border border-border-subtle"

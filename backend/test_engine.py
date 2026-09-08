@@ -50,7 +50,7 @@ def test_slot_allocation_and_price_lock():
     }
 
     booking = allocate_slot(db, mandi_code="KARNAL-TEST", parsed_intent=intent, lane_type="EXPRESS")
-    assert booking.token_number.startswith("MS-"), "Invalid token format"
+    assert booking.token_number.startswith("MF-"), "Invalid token format"
     assert booking.bay_assigned in [1, 2], "Bay must be 1 or 2"
     assert booking.price_lock_rate == 2275.0, "Price lock mismatch"
     assert len(booking.price_lock_hash) == 24, "Invalid price lock hash"
@@ -82,7 +82,7 @@ def test_disruption_cascade():
 
     # Add 2 bookings on Bay 1
     b1 = SlotBooking(
-        token_number="MS-TEST-01",
+        token_number="MF-TEST-01",
         mandi_id=mandi.id,
         farmer_name="Farmer 1",
         farmer_phone="+919812111111",
@@ -100,7 +100,7 @@ def test_disruption_cascade():
         price_lock_hash="SEAL123456"
     )
     b2 = SlotBooking(
-        token_number="MS-TEST-02",
+        token_number="MF-TEST-02",
         mandi_id=mandi.id,
         farmer_name="Farmer 2",
         farmer_phone="+919812222222",
@@ -204,7 +204,7 @@ def test_arhtiya_portal_scoping_and_commission():
 
     # Add Disbursed Booking for Farmer A under Arhtiya 1
     bookingA = SlotBooking(
-        token_number="MS-ARH-01",
+        token_number="MF-ARH-01",
         mandi_id=mandi.id,
         farmer_id=fA.id,
         arhtiya_id=a1.id,
@@ -226,7 +226,7 @@ def test_arhtiya_portal_scoping_and_commission():
     )
     # Add Scheduled Booking for Farmer B under Arhtiya 2
     bookingB = SlotBooking(
-        token_number="MS-ARH-02",
+        token_number="MF-ARH-02",
         mandi_id=mandi.id,
         farmer_id=fB.id,
         arhtiya_id=a2.id,
@@ -257,8 +257,8 @@ def test_arhtiya_portal_scoping_and_commission():
     ).all()
 
     assert len(a1_farmers) == 1 and a1_farmers[0].name == "Kisan A", "Arhtiya 1 saw unexpected farmers"
-    assert len(a1_bookings) == 1 and a1_bookings[0].token_number == "MS-ARH-01", "Arhtiya 1 saw another arhtiya's booking"
-    assert "MS-ARH-02" not in [b.token_number for b in a1_bookings], "Data leak: Arhtiya 1 accessed Arhtiya 2's booking"
+    assert len(a1_bookings) == 1 and a1_bookings[0].token_number == "MF-ARH-01", "Arhtiya 1 saw another arhtiya's booking"
+    assert "MF-ARH-02" not in [b.token_number for b in a1_bookings], "Data leak: Arhtiya 1 accessed Arhtiya 2's booking"
 
     # 4. Test Commission Math
     # Total payment = 100,000.0; commission rate = 2.5% -> Expected commission = 2,500.0

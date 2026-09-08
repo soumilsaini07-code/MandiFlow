@@ -16,7 +16,7 @@ import {
 
 export default function FarmerPassView({ selectedToken, allTokens = [] }) {
   const [tokenData, setTokenData] = useState(null);
-  const [currentToken, setCurrentToken] = useState(selectedToken || (allTokens[0]?.token_number || 'MS-0908-103'));
+  const [currentToken, setCurrentToken] = useState(selectedToken || (allTokens[0]?.token_number || 'MF-0908-103'));
   const [totpCountdown, setTotpCountdown] = useState(60);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
 
