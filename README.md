@@ -1,4 +1,4 @@
-# 🌾 AgriQueue AI (MandiSetu)
+# 🌾 MandiFlow
 > **Zero-Hardware, Voice-First Smart Kisan Mandi Dynamic Pacing & Procurement Coordination Platform**  
 > *Built for APMC Grain Mandis, Indian Farmers, and Mandi Committees (e-NAM Integrated)*
 
@@ -18,8 +18,8 @@ Every rabi and kharif harvest season across India, thousands of tractor trolleys
 
 ---
 
-## 💡 Solution: AgriQueue AI Architecture
-AgriQueue AI (MandiSetu) introduces **coordinated arrival micro-windows, digital price guarantees, closed-loop disruption absorption, and dialect voice accessibility**.
+## 💡 Solution: MandiFlow Architecture
+MandiFlow introduces **coordinated arrival micro-windows, digital price guarantees, closed-loop disruption absorption, and dialect voice accessibility**.
 
 ```
  [Farmer: WhatsApp Voice / Text / Dialect Audio]
@@ -124,9 +124,9 @@ Frontend Web Portal will start at: `http://localhost:5173`
 
 ---
 
-## 📊 Traditional Mandi vs AgriQueue AI Impact
+## 📊 Traditional Mandi vs MandiFlow Impact
 
-| Benchmark Metric | Traditional Uncoordinated Mandi | AgriQueue AI (MandiSetu) | Impact |
+| Benchmark Metric | Traditional Uncoordinated Mandi | MandiFlow | Impact |
 | :--- | :--- | :--- | :--- |
 | **Peak Gate Waiting Time** | 18 – 48 Hours | **35 Minutes** | **94% Reduction** |
 | **Distress Selling Rate** | ₹400 – ₹800 below MSP | **₹0 (Locked MSP)** | **100% Guaranteed** |

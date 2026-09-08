@@ -12,7 +12,7 @@ export default function StitchFooter({ onNavigate }) {
                 <span className="material-symbols-outlined text-[16px]">eco</span>
               </div>
               <span className="font-bold text-primary-deep font-display text-base">
-                AgriQueue AI
+                MandiFlow
               </span>
             </div>
             <p className="text-xs text-on-surface-subtle leading-relaxed">
@@ -83,7 +83,7 @@ export default function StitchFooter({ onNavigate }) {
 
         {/* Bottom copyright */}
         <div className="pt-8 border-t border-border-light flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-on-surface-subtle">
-          <span>© 2026 Directorate of Agricultural Marketing &amp; AgriQueue AI MandiSetu Platform</span>
+          <span>© 2026 Directorate of Agricultural Marketing &amp; MandiFlow Platform</span>
           <div className="flex gap-6">
             <a className="hover:text-primary transition-colors" href="#">Citizen Charter</a>
             <a className="hover:text-primary transition-colors" href="#">e-NAM Portal</a>

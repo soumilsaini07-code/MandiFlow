@@ -9,7 +9,7 @@ export default function StitchHowItWorks({ onOpenVoiceAI }) {
           <div className="max-w-xl">
             <span className="text-xs font-bold text-accent uppercase tracking-wider">Simple &amp; App-Free</span>
             <h2 className="text-3xl sm:text-4xl font-bold text-primary-deep mt-1 font-display">
-              How AgriQueue Works
+              How MandiFlow Works
             </h2>
             <p className="text-base text-secondary mt-2">
               No complicated app downloads. Simple voice notes and missed calls in your mother tongue.
@@ -74,7 +74,7 @@ export default function StitchHowItWorks({ onOpenVoiceAI }) {
           <div>
             <span className="text-xs font-bold text-accent uppercase tracking-wider">Field Benchmark</span>
             <h2 className="text-3xl font-bold text-primary-deep mt-1 font-display">
-              Traditional Mandi vs. AgriQueue AI
+              Traditional Mandi vs. MandiFlow
             </h2>
             <p className="text-sm text-secondary mt-1">
               Field-measured operational gains across peak Rabi harvest arrivals.
@@ -87,7 +87,7 @@ export default function StitchHowItWorks({ onOpenVoiceAI }) {
                 <tr className="border-b border-border-light text-xs font-bold uppercase tracking-wider text-on-surface-subtle bg-surface-low/50">
                   <th className="py-4 px-6">Parameters</th>
                   <th className="py-4 px-6 text-on-surface-subtle">Traditional Mandi System</th>
-                  <th className="py-4 px-6 text-primary-deep bg-primary-light/40">AgriQueue AI Paced Model</th>
+                  <th className="py-4 px-6 text-primary-deep bg-primary-light/40">MandiFlow Paced Model</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">

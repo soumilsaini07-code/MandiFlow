@@ -67,7 +67,7 @@ export default function App() {
 
   const handleShareWhatsApp = (pass) => {
     alert(
-      `🌾 AgriQueue Mandi e-Parchi Forwarded!\n\n` +
+      `🌾 MandiFlow e-Parchi Forwarded!\n\n` +
       `Token: ${pass.token_number}\n` +
       `Farmer: ${pass.farmer_name} (${pass.village})\n` +
       `Crop: ${pass.crop} - ${pass.quantity_quintals} Quintals\n` +

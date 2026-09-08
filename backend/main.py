@@ -20,7 +20,7 @@ DATABASE_URL = "sqlite:///./mandi_setu.db"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-app = FastAPI(title="MandiSetu API", description="AI Mandi Procurement Coordination Platform", version="1.0.0")
+app = FastAPI(title="MandiFlow API", description="AI Mandi Procurement Coordination Platform", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -70,7 +70,7 @@ class StatusAdvanceRequest(BaseModel):
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "MandiSetu Engine", "time": datetime.datetime.utcnow().isoformat()}
+    return {"status": "ok", "service": "MandiFlow Engine", "time": datetime.datetime.utcnow().isoformat()}
 
 @app.get("/api/market-intelligence")
 def get_market_intelligence_api():

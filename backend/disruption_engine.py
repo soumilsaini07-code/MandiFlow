@@ -79,7 +79,7 @@ def trigger_disruption(
 
         # Craft proactive message
         msg = (
-            f"⚠️ *MANDI DELAY ALERT* | Karnal APMC\n"
+            f"⚠️ *MANDIFLOW DELAY ALERT* | Karnal APMC\n"
             f"Namaste {booking.farmer_name} ji,\n"
             f"Bay {booking.bay_assigned} me {description or 'yantrik kharabi'} ke karan {delay_minutes} minute ki deri hai.\n\n"
             f"📍 Token: *{booking.token_number}*\n"

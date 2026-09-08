@@ -76,7 +76,7 @@ export default function DisruptionSimulator({ dashboardData, refreshData }) {
           </h2>
         </div>
         <p style={{ fontSize: '0.86rem', color: 'var(--text-main)', lineHeight: 1.5, maxWidth: '900px' }}>
-          Traditional government portals (e-Uparjan, e-Kharid) are <strong>open-loop</strong>: they assign a static day pass and collapse into 36-hour gridlocks whenever a weighbridge jams. MandiSetu is a <strong>closed-loop control system</strong>. When an incident occurs, delays ripple backward through the queue and reach farmers on WhatsApp <em>before</em> they leave their village.
+          Traditional government portals (e-Uparjan, e-Kharid) are <strong>open-loop</strong>: they assign a static day pass and collapse into 36-hour gridlocks whenever a weighbridge jams. MandiFlow is a <strong>closed-loop control system</strong>. When an incident occurs, delays ripple backward through the queue and reach farmers on WhatsApp <em>before</em> they leave their village.
         </p>
       </div>
 

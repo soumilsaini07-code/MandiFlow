@@ -89,7 +89,7 @@ export default function MarketIntelligence() {
           </h3>
         </div>
         <p style={{ fontSize: '0.84rem', color: 'var(--text-main)', lineHeight: 1.45 }}>
-          When mandi gates suffer 24–72hr gridlocks, desperate farmers sell up to <strong>₹500–₹1,200/quintal below MSP</strong> to avoid waiting costs. With MandiSetu's <strong>Slot-Bound Price Lock</strong>, the booking timestamp mathematically locks the procurement rate at government MSP, guaranteeing full value even during operational delay:
+          When mandi gates suffer 24–72hr gridlocks, desperate farmers sell up to <strong>₹500–₹1,200/quintal below MSP</strong> to avoid waiting costs. With MandiFlow's <strong>Slot-Bound Price Lock</strong>, the booking timestamp mathematically locks the procurement rate at government MSP, guaranteeing full value even during operational delay:
         </p>
 
         <div style={{
@@ -124,7 +124,7 @@ export default function MarketIntelligence() {
                 color: 'var(--amber-400)',
                 fontWeight: 700
               }}>
-                +₹{crop.distress_loss_avoided_per_qtl}/qtl Saved by MandiSetu
+                +₹{crop.distress_loss_avoided_per_qtl}/qtl Saved by MandiFlow
               </div>
             </div>
           ))}

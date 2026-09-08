@@ -31,7 +31,7 @@ export default function StitchHeader({ activeTab, setActiveTab }) {
             </div>
             <div>
               <span className="text-xl font-bold tracking-tight text-primary-deep font-display block leading-none">
-                AgriQueue AI
+                MandiFlow
               </span>
               <span className="text-[11px] text-on-surface-subtle font-medium">
                 Kisan Mandi Smart Arrival

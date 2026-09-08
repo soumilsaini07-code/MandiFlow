@@ -223,7 +223,7 @@ export default function VoiceSimulator({ onBookingCreated }) {
           })}
           {loading && (
             <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Bot size={15} /> MandiSetu AI parsing voice intent & solving capacity constraints...
+              <Bot size={15} /> MandiFlow AI parsing voice intent & solving capacity constraints...
             </div>
           )}
         </div>

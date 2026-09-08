@@ -305,7 +305,7 @@ def seed_database():
 
     db.commit()
     db.close()
-    print(f"Successfully seeded MandiSetu with {len(sample_farmers_data)} realistic records.")
+    print(f"Successfully seeded MandiFlow with {len(sample_farmers_data)} realistic records.")
 
 if __name__ == "__main__":
     seed_database()
