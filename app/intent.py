@@ -102,7 +102,10 @@ Today's date is {today}. Reply with ONLY a JSON object, no prose, matching:
 {{"crop": string, "quantity_quintals": number, "vehicle": string or null,
 "day_word": one of "today"|"tomorrow"|"monday".."sunday"}}
 If a field truly cannot be determined, use your best reasonable guess rather
-than failing — the farmer will be asked to confirm the result afterward."""
+than failing — the farmer will be asked to confirm the result afterward.
+For "vehicle", normalize to the standard local term: a bare mention of
+"tractor" for grain transport means "tractor-trolley" (a tractor alone
+can't carry quintals of loose grain) — use "tractor-trolley" in that case."""
 
 
 def _llm_extract(text: str, today: date) -> dict:
@@ -110,7 +113,7 @@ def _llm_extract(text: str, today: date) -> dict:
         raise IntentParseError("GROQ_API_KEY is not set — cannot run intent extraction.")
 
     completion = _client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
         messages=[
             {"role": "system", "content": _INTENT_SYSTEM_PROMPT.format(today=today.isoformat())},
             {"role": "user", "content": text},

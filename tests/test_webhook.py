@@ -13,8 +13,21 @@ assert on the resulting server-side state (bookings created, confirmation
 state stored).
 """
 import os
+from pathlib import Path
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///./test_webhook.db")
+
+# The line above points every test in this module at a real file on disk
+# (not :memory:) so the FastAPI TestClient's separate startup/shutdown per
+# `with TestClient(app)` block still shares one consistent schema. But that
+# means the file survives between separate `pytest` invocations too — without
+# this cleanup, bookings from a previous run pile up and these tests start
+# failing with "assert 2 == 1" (or worse) even though nothing is actually
+# broken. Delete any leftover file before app.main (and therefore app.db's
+# engine) is imported, so every run starts from a clean, empty database.
+_stale_db = Path(__file__).resolve().parent.parent / "test_webhook.db"
+if _stale_db.exists():
+    _stale_db.unlink()
 
 from fastapi.testclient import TestClient  # noqa: E402
 
