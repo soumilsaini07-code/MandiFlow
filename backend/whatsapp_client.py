@@ -9,6 +9,9 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger("mandiflow.whatsapp")
 
